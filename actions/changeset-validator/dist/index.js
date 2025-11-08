@@ -32009,7 +32009,7 @@ class GitUtil {
     // list artifacts
     const listReqURL = this.#buildRequestURI('list', { owner, repoName });
 
-    console.log(`Fetching artifacts from ${listReqURL}`)
+    console.log(`Fetching artifacts from ${listReqURL}`);
 
     const listResponse = await fetch(listReqURL, { headers });
 

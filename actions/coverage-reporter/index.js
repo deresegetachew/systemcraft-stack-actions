@@ -2,19 +2,73 @@ import * as core from '@actions/core';
 
 import { CoverageReporterService } from './services/coverage-reporter.service.js';
 
+const DEFAULTS = {
+  coverageCommand: 'pnpm test -- --coverage',
+  coverageFile: 'coverage/coverage-summary.json',
+  coverageFormat: 'lcov',
+  outputDir: 'coverage-artifacts',
+  enablePrComments: true,
+  minimumCoverage: 80,
+  enableDiff: true,
+  baselineArtifactName: 'coverage-baseline-main',
+  baseBranch: 'main',
+};
+
+function getInputOrDefault(name, fallback) {
+  const value = core.getInput(name);
+  return value ? value : fallback;
+}
+
+function getBooleanInputOrDefault(name, fallback) {
+  const value = core.getInput(name);
+  if (!value) {
+    return fallback;
+  }
+
+  return value.toLowerCase() === 'true';
+}
+
+function getNumberInputOrDefault(name, fallback) {
+  const value = core.getInput(name);
+  if (!value) {
+    return fallback;
+  }
+
+  const parsed = Number(value);
+  return Number.isNaN(parsed) ? fallback : parsed;
+}
+
 export async function main() {
   try {
     const inputs = {
-      coverageCommand: core.getInput('coverage-command'),
-      coverageFile: core.getInput('coverage-file'),
-      coverageFormat: core.getInput('coverage-format'),
-      outputDir: core.getInput('output-dir'),
-      enablePrComments: core.getBooleanInput('enable-pr-comments'),
-      minimumCoverage: parseFloat(core.getInput('minimum-coverage')),
-      githubToken: core.getInput('github-token'),
-      enableDiff: core.getBooleanInput('enable-diff'),
-      baselineArtifactName: core.getInput('baseline-artifact-name'),
-      baseBranch: core.getInput('base-branch'),
+      coverageCommand: getInputOrDefault(
+        'coverage-command',
+        DEFAULTS.coverageCommand,
+      ),
+      coverageFile: getInputOrDefault('coverage-file', DEFAULTS.coverageFile),
+      coverageFormat: getInputOrDefault(
+        'coverage-format',
+        DEFAULTS.coverageFormat,
+      ),
+      outputDir: getInputOrDefault('output-dir', DEFAULTS.outputDir),
+      enablePrComments: getBooleanInputOrDefault(
+        'enable-pr-comments',
+        DEFAULTS.enablePrComments,
+      ),
+      minimumCoverage: getNumberInputOrDefault(
+        'minimum-coverage',
+        DEFAULTS.minimumCoverage,
+      ),
+      githubToken: getInputOrDefault(
+        'github-token',
+        process.env.GITHUB_TOKEN || '',
+      ),
+      enableDiff: getBooleanInputOrDefault('enable-diff', DEFAULTS.enableDiff),
+      baselineArtifactName: getInputOrDefault(
+        'baseline-artifact-name',
+        DEFAULTS.baselineArtifactName,
+      ),
+      baseBranch: getInputOrDefault('base-branch', DEFAULTS.baseBranch),
     };
 
     const service = new CoverageReporterService();
