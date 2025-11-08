@@ -41,15 +41,33 @@ function getNumberInputOrDefault(name, fallback) {
 export async function main() {
   try {
     const inputs = {
-      coverageCommand: getInputOrDefault('coverage-command', DEFAULTS.coverageCommand),
+      coverageCommand: getInputOrDefault(
+        'coverage-command',
+        DEFAULTS.coverageCommand,
+      ),
       coverageFile: getInputOrDefault('coverage-file', DEFAULTS.coverageFile),
-      coverageFormat: getInputOrDefault('coverage-format', DEFAULTS.coverageFormat),
+      coverageFormat: getInputOrDefault(
+        'coverage-format',
+        DEFAULTS.coverageFormat,
+      ),
       outputDir: getInputOrDefault('output-dir', DEFAULTS.outputDir),
-      enablePrComments: getBooleanInputOrDefault('enable-pr-comments', DEFAULTS.enablePrComments),
-      minimumCoverage: getNumberInputOrDefault('minimum-coverage', DEFAULTS.minimumCoverage),
-      githubToken: getInputOrDefault('github-token', process.env.GITHUB_TOKEN || ''),
+      enablePrComments: getBooleanInputOrDefault(
+        'enable-pr-comments',
+        DEFAULTS.enablePrComments,
+      ),
+      minimumCoverage: getNumberInputOrDefault(
+        'minimum-coverage',
+        DEFAULTS.minimumCoverage,
+      ),
+      githubToken: getInputOrDefault(
+        'github-token',
+        process.env.GITHUB_TOKEN || '',
+      ),
       enableDiff: getBooleanInputOrDefault('enable-diff', DEFAULTS.enableDiff),
-      baselineArtifactName: getInputOrDefault('baseline-artifact-name', DEFAULTS.baselineArtifactName),
+      baselineArtifactName: getInputOrDefault(
+        'baseline-artifact-name',
+        DEFAULTS.baselineArtifactName,
+      ),
       baseBranch: getInputOrDefault('base-branch', DEFAULTS.baseBranch),
     };
 
