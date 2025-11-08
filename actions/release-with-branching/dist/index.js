@@ -573,6 +573,8 @@ class GitUtil {
   }
 
   #buildRequestHeaders() {
+    console.log(`token: ${this.githubToken}`);
+
     return {
       Authorization: `Bearer ${this.githubToken}`,
       'User-Agent': 'coverage-collector-script',
