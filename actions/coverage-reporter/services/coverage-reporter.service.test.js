@@ -125,7 +125,9 @@ All files          |   85.5 |    78.2 |   92.1 |   87.3 |
 
         it('should fail when coverage is below threshold', async () => {
             // Mock low coverage output
-            mockShell.run = () => `All files | 50.0 | 45.0 | 55.0 | 48.0 |`;
+            mockShell.exec = () => ({
+                stdout: `All files | 50.0 | 45.0 | 55.0 | 48.0 |`
+            });
             service = new CoverageReporterService(mockShell, mockFs);
 
             const inputs = {

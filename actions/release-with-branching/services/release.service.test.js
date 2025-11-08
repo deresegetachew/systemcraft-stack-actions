@@ -93,9 +93,9 @@ describe('ReleaseService', () => {
 
       releaseService.executeSteps(steps);
 
-      assert.strictEqual(mockShellService.run.mock.callCount(), 1);
+      assert.strictEqual(mockShellService.exec.mock.callCount(), 1);
       assert.strictEqual(
-        mockShellService.run.mock.calls[0].arguments[0],
+        mockShellService.exec.mock.calls[0].arguments[0],
         'echo test',
       );
     });
@@ -265,9 +265,9 @@ describe('ReleaseService', () => {
 
       await releaseService.run(env);
 
-      assert.strictEqual(mockShellService.run.mock.callCount(), 1);
+      assert.strictEqual(mockShellService.exec.mock.callCount(), 1);
       assert.ok(
-        mockShellService.run.mock.calls[0].arguments[0].includes(
+        mockShellService.exec.mock.calls[0].arguments[0].includes(
           'changeset publish',
         ),
       );
