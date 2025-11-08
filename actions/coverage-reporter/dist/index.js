@@ -27967,6 +27967,16 @@ class CoverageReporterService {
         };
     }
 
+    parseCoverageFromSummary(summary) {
+        const { total } = summary;
+        return {
+            statements: total.statements.pct,
+            branches: total.branches.pct,
+            functions: total.functions.pct,
+            lines: total.lines.pct,
+        };
+    }
+
     calculateOverallCoverage(coverage) {
         return (
             (coverage.statements +
@@ -28012,21 +28022,31 @@ class CoverageReporterService {
         return report;
     }
 
-    async run(inputs) {
-        console.log('🚀 Starting coverage reporting...');
+    getCoverage(inputs) {
+        if (inputs.coverageFile && this.fs.existsSync(inputs.coverageFile)) {
+            const summary = JSON.parse(
+                this.fs.readFileSync(inputs.coverageFile, 'utf8'),
+            );
+            return this.parseCoverageFromSummary(summary);
+        }
 
-        // Ensure output directory exists
-        this.ensureDirectory(inputs.outputDir);
-
-        // Run coverage
         const coverageResult = this.runCoverage(inputs.coverageCommand);
 
         if (!coverageResult.success) {
             throw new Error(`Coverage command failed: ${coverageResult.error}`);
         }
 
+        return this.parseCoverageFromOutput(coverageResult.output);
+    }
+
+    async run(inputs) {
+        console.log('🚀 Starting coverage reporting...');
+
+        // Ensure output directory exists
+        this.ensureDirectory(inputs.outputDir);
+
         // Parse coverage data
-        const coverage = this.parseCoverageFromOutput(coverageResult.output);
+        const coverage = this.getCoverage(inputs);
         const overallCoverage = this.calculateOverallCoverage(coverage);
 
         // Generate summary JSON
@@ -28081,6 +28101,7 @@ async function main() {
   try {
     const inputs = {
       coverageCommand: core.getInput('coverage-command'),
+      coverageFile: core.getInput('coverage-file'),
       coverageFormat: core.getInput('coverage-format'),
       outputDir: core.getInput('output-dir'),
       enablePrComments: core.getBooleanInput('enable-pr-comments'),
