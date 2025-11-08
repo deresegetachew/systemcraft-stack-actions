@@ -146,6 +146,16 @@ pnpm test
 pnpm build
 ```
 
+## Platform Compatibility
+
+These actions are designed to work with GitHub.com, GitHub Enterprise Server, and other GitHub-compatible platforms. The actions automatically respect the following environment variables for platform compatibility:
+
+- `GITHUB_API_URL`: Base URL for the GitHub REST API (defaults to `https://api.github.com`)
+- `GITHUB_GRAPHQL_URL`: Base URL for the GitHub GraphQL API (defaults to `https://api.github.com/graphql`)  
+- `GITHUB_SERVER_URL`: Base URL for the GitHub instance (defaults to `https://github.com`)
+
+All actions use the `@actions/github` toolkit which automatically configures the correct endpoints based on these environment variables. No additional configuration is required.
+
 ## License
 
 MIT

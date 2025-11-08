@@ -32100,10 +32100,12 @@ class GitUtil {
   }
 
   #buildRequestURI(type, options) {
+    const apiUrl = process.env.GITHUB_API_URL || 'https://api.github.com';
+
     switch (type) {
       case 'list': {
         const url = new URL(
-          `https://api.github.com/repos/${options.owner}/${options.repoName}/actions/artifacts`,
+          `${apiUrl}/repos/${options.owner}/${options.repoName}/actions/artifacts`,
         );
         url.searchParams.set('name', options.artifactName);
         url.searchParams.set('per_page', '100');
@@ -32112,7 +32114,7 @@ class GitUtil {
       }
       case 'download': {
         return new URL(
-          `https://api.github.com/repos/${options.owner}/${options.repoName}/actions/artifacts/${options.artifactID}/zip`,
+          `${apiUrl}/repos/${options.owner}/${options.repoName}/actions/artifacts/${options.artifactID}/zip`,
         );
       }
       default:
