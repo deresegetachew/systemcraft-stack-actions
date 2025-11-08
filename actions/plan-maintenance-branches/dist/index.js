@@ -35,20 +35,25 @@ __nccwpck_require__.a(__webpack_module__, async (__webpack_handle_async_dependen
 
 
 
-// Main function with default dependencies  
-async function main(env = process.env, fsApi = node_fs__WEBPACK_IMPORTED_MODULE_0__, shellUtil = new _libs_utils_index_js__WEBPACK_IMPORTED_MODULE_1__/* .ShellUtil */ .Rs()) {
-    const versionService = _services_version_service_js__WEBPACK_IMPORTED_MODULE_2__/* .VersionService */ .I.create(shellUtil, fsApi);
-    return await versionService.run(env);
+// Main function with default dependencies
+async function main(
+  env = process.env,
+  fsApi = node_fs__WEBPACK_IMPORTED_MODULE_0__,
+  shellUtil = new _libs_utils_index_js__WEBPACK_IMPORTED_MODULE_1__/* .ShellUtil */ .Rs(),
+) {
+  const versionService = _services_version_service_js__WEBPACK_IMPORTED_MODULE_2__/* .VersionService */ .I.create(shellUtil, fsApi);
+  return await versionService.run(env);
 }
 
 if (import.meta.url === `file://${process.argv[1]}`) {
-    try {
-        await main();
-    } catch (err) {
-        console.error(err.message);
-        process.exit(1);
-    }
+  try {
+    await main();
+  } catch (err) {
+    console.error(err.message);
+    process.exit(1);
+  }
 }
+
 __webpack_async_result__();
 } catch(e) { __webpack_async_result__(e); } }, 1);
 
@@ -68,85 +73,96 @@ __webpack_async_result__();
 
 
 class VersionService {
-    constructor(shellUtil, fsApi) {
-        this.shell = shellUtil;
-        this.fs = fsApi;
+  constructor(shellUtil, fsApi) {
+    this.shell = shellUtil;
+    this.fs = fsApi;
+  }
+
+  static create(shell, fsApi) {
+    return new VersionService(shell, fsApi);
+  }
+
+  getMajorBumpPackages(baseDir) {
+    const files = (0,_libs_utils_index_js__WEBPACK_IMPORTED_MODULE_1__/* .loadChangesetFiles */ .kK)(this.fs, baseDir);
+    if (files.length === 0) {
+      console.log('ℹ️ No changesets found.');
+      return new Set();
+    }
+    return _libs_utils_index_js__WEBPACK_IMPORTED_MODULE_1__/* .PackageUtil */ .Nb.extractMajorBumpPackagesFromChangesets(files);
+  }
+
+  generateMaintenancePlan(majorBumpPackages, baseDir) {
+    const plan = {};
+
+    for (const packageName of majorBumpPackages) {
+      const pkgInfo = (0,_libs_utils_index_js__WEBPACK_IMPORTED_MODULE_1__/* .getPackageInfo */ .rP)(packageName, this.fs, baseDir);
+      if (!pkgInfo) {
+        console.warn(
+          `⚠️ Package info not found for ${packageName}. Skipping...`,
+        );
+        continue;
+      }
+
+      const branchName = `release/${pkgInfo.dirName}@${pkgInfo.version}`;
+      plan[packageName] = {
+        branchName,
+        version: pkgInfo.version,
+        dirName: pkgInfo.dirName,
+      };
+      console.log(`📋 Planned maintenance branch: ${branchName}`);
     }
 
-    static create(shell, fsApi) {
-        return new VersionService(shell, fsApi);
+    return plan;
+  }
+
+  writePlanFile(plan, baseDir) {
+    const releaseMetaDir = node_path__WEBPACK_IMPORTED_MODULE_0__.resolve(baseDir, '.release-meta');
+    const planFilePath = node_path__WEBPACK_IMPORTED_MODULE_0__.join(releaseMetaDir, 'maintenance-branches.json');
+
+    if (!this.fs.existsSync(releaseMetaDir)) {
+      this.fs.mkdirSync(releaseMetaDir, { recursive: true });
     }
 
-    getMajorBumpPackages(baseDir) {
-        const files = (0,_libs_utils_index_js__WEBPACK_IMPORTED_MODULE_1__/* .loadChangesetFiles */ .kK)(this.fs, baseDir);
-        if (files.length === 0) {
-            console.log('ℹ️ No changesets found.');
-            return new Set();
-        }
-        return _libs_utils_index_js__WEBPACK_IMPORTED_MODULE_1__/* .PackageUtil */ .Nb.extractMajorBumpPackagesFromChangesets(files);
+    this.fs.writeFileSync(planFilePath, JSON.stringify(plan, null, 2), 'utf-8');
+    console.log(`✅ Plan written to: ${planFilePath}`);
+  }
+
+  runChangesetVersion() {
+    this.shell.run('pnpm changeset version');
+  }
+
+  async run(env = process.env, baseDir = process.cwd()) {
+    console.log('🔄 Starting version script...');
+
+    const majorBumpPackages = this.getMajorBumpPackages(baseDir);
+
+    if (majorBumpPackages.size === 0) {
+      console.log(
+        'ℹ️ No major version bumps detected. Writing empty plan file.',
+      );
+      this.writePlanFile({}, baseDir);
+      return;
     }
 
-    generateMaintenancePlan(majorBumpPackages, baseDir) {
-        const plan = {};
+    console.log(
+      `🔍 Major bump packages detected: ${Array.from(majorBumpPackages).join(', ')}`,
+    );
 
-        for (const packageName of majorBumpPackages) {
-            const pkgInfo = (0,_libs_utils_index_js__WEBPACK_IMPORTED_MODULE_1__/* .getPackageInfo */ .rP)(packageName, this.fs, baseDir);
-            if (!pkgInfo) {
-                console.warn(`⚠️ Package info not found for ${packageName}. Skipping...`);
-                continue;
-            }
+    const plan = this.generateMaintenancePlan(majorBumpPackages, baseDir);
+    this.writePlanFile(plan, baseDir);
 
-            const branchName = `release/${pkgInfo.dirName}@${pkgInfo.version}`;
-            plan[packageName] = { branchName, version: pkgInfo.version, dirName: pkgInfo.dirName };
-            console.log(`📋 Planned maintenance branch: ${branchName}`);
-        }
+    console.log('📦 Running changeset version...');
+    this.runChangesetVersion();
 
-        return plan;
-    }
-
-    writePlanFile(plan, baseDir) {
-        const releaseMetaDir = node_path__WEBPACK_IMPORTED_MODULE_0__.resolve(baseDir, '.release-meta');
-        const planFilePath = node_path__WEBPACK_IMPORTED_MODULE_0__.join(releaseMetaDir, 'maintenance-branches.json');
-
-        if (!this.fs.existsSync(releaseMetaDir)) {
-            this.fs.mkdirSync(releaseMetaDir, { recursive: true });
-        }
-
-        this.fs.writeFileSync(planFilePath, JSON.stringify(plan, null, 2), 'utf-8');
-        console.log(`✅ Plan written to: ${planFilePath}`);
-    }
-
-    runChangesetVersion() {
-        this.shell.run('pnpm changeset version');
-    }
-
-    async run(env = process.env, baseDir = process.cwd()) {
-        console.log('🔄 Starting version script...');
-
-        const majorBumpPackages = this.getMajorBumpPackages(baseDir);
-
-        if (majorBumpPackages.size === 0) {
-            console.log('ℹ️ No major version bumps detected. Writing empty plan file.');
-            this.writePlanFile({}, baseDir);
-            return;
-        }
-
-        console.log(`🔍 Major bump packages detected: ${Array.from(majorBumpPackages).join(', ')}`);
-
-        const plan = this.generateMaintenancePlan(majorBumpPackages, baseDir);
-        this.writePlanFile(plan, baseDir);
-
-        console.log('📦 Running changeset version...');
-        this.runChangesetVersion();
-
-        console.log('✅ Version script completed successfully.');
-    }
+    console.log('✅ Version script completed successfully.');
+  }
 }
 
 // Legacy function export for backward compatibility
 function createVersionService(shell, fsApi) {
-    return VersionService.create(shell, fsApi);
+  return VersionService.create(shell, fsApi);
 }
+
 
 /***/ }),
 
