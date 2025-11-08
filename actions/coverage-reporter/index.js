@@ -1,5 +1,4 @@
 import * as core from '@actions/core';
-import * as github from '@actions/github';
 
 import { CoverageReporterService } from './services/coverage-reporter.service.js';
 
@@ -13,7 +12,6 @@ const DEFAULTS = {
   enableDiff: true,
   baselineArtifactName: 'coverage-baseline-main',
   baseBranch: 'main',
-  gitToken: github.token,
 };
 
 function getInputOrDefault(name, fallback) {
@@ -61,7 +59,10 @@ export async function main() {
         'minimum-coverage',
         DEFAULTS.minimumCoverage,
       ),
-      githubToken: getInputOrDefault('github-token', DEFAULTS.gitToken),
+      githubToken: getInputOrDefault(
+        'github-token',
+        process.env.GITHUB_TOKEN || '',
+      ),
       enableDiff: getBooleanInputOrDefault('enable-diff', DEFAULTS.enableDiff),
       baselineArtifactName: getInputOrDefault(
         'baseline-artifact-name',
