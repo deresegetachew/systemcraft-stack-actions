@@ -80,6 +80,16 @@ export class CoverageReporterService {
         };
     }
 
+    parseCoverageFromSummary(summary) {
+        const { total } = summary;
+        return {
+            statements: total.statements.pct,
+            branches: total.branches.pct,
+            functions: total.functions.pct,
+            lines: total.lines.pct,
+        };
+    }
+
     calculateOverallCoverage(coverage) {
         return (
             (coverage.statements +
