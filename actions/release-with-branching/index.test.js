@@ -89,7 +89,7 @@ describe('ReleaseService', () => {
         // -- Assert
         assert.strictEqual(mockGitService.getChangedFiles.mock.callCount(), 1);
         // Should call publish command
-        const publishCall = mockShellService.run.mock.calls.find((call) =>
+        const publishCall = mockShellService.exec.mock.calls.find((call) =>
           call.arguments[0].includes('changeset publish'),
         );
         assert.ok(publishCall, 'Should call changeset publish');
@@ -108,7 +108,7 @@ describe('ReleaseService', () => {
         // -- Assert
         assert.strictEqual(mockGitService.getChangedFiles.mock.callCount(), 1);
         // Should not call publish
-        const publishCall = mockShellService.run.mock.calls.find((call) =>
+        const publishCall = mockShellService.exec.mock.calls.find((call) =>
           call.arguments[0].includes('changeset publish'),
         );
         assert.ok(!publishCall, 'Should not call changeset publish');
@@ -163,7 +163,7 @@ describe('ReleaseService', () => {
 
         // -- Assert
         assert.strictEqual(mockGitService.getChangedFiles.mock.callCount(), 1);
-        const publishCall = mockShellService.run.mock.calls.find((call) =>
+        const publishCall = mockShellService.exec.mock.calls.find((call) =>
           call.arguments[0].includes('changeset publish'),
         );
         assert.ok(publishCall, 'Should call changeset publish');
@@ -241,7 +241,7 @@ describe('ReleaseService', () => {
 
         // -- Assert
         assert.strictEqual(mockGitService.getChangedFiles.mock.callCount(), 1);
-        const publishCall = mockShellService.run.mock.calls.find((call) =>
+        const publishCall = mockShellService.exec.mock.calls.find((call) =>
           call.arguments[0].includes('changeset publish'),
         );
         assert.ok(publishCall, 'Should call changeset publish');

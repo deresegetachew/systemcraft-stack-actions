@@ -23,7 +23,7 @@ describe('VersionService', () => {
 
     // Mock shell service
     mockShellService = {
-      run: mock.fn(() => ({ stdout: '' })),
+      exec: mock.fn(() => ({ stdout: '' })),
     };
 
     versionService = VersionService.create(mockShellService, mockFsApi);
@@ -45,7 +45,7 @@ describe('VersionService', () => {
       // -- Assert
       assert.strictEqual(mockFsApi.writeFileSync.mock.callCount(), 1);
       assert.strictEqual(
-        mockShellService.run.mock.callCount(),
+        mockShellService.exec.mock.callCount(),
         0,
         'Should not run changeset version',
       );
@@ -106,9 +106,9 @@ Breaking change
         writtenContent['@scope/lib-one'].branchName.includes('lib-one'),
       );
 
-      assert.strictEqual(mockShellService.run.mock.callCount(), 1);
+      assert.strictEqual(mockShellService.exec.mock.callCount(), 1);
       assert.ok(
-        mockShellService.run.mock.calls[0].arguments[0].includes(
+        mockShellService.exec.mock.calls[0].arguments[0].includes(
           'changeset version',
         ),
       );
@@ -147,7 +147,7 @@ Breaking change
 
       assert.ok(writtenContent['@scope/lib-one']);
       assert.ok(writtenContent['@scope/lib-two']);
-      assert.strictEqual(mockShellService.run.mock.callCount(), 1);
+      assert.strictEqual(mockShellService.exec.mock.callCount(), 1);
     });
   });
 });

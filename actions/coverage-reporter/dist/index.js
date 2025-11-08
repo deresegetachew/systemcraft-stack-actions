@@ -27901,175 +27901,175 @@ class ShellUtil {
 
 
 class CoverageReporterService {
-  constructor(shellUtil, fsApi) {
-    this.shell = shellUtil || new ShellUtil();
-    this.fs = fsApi || external_node_fs_namespaceObject_0;
-  }
-
-  static create() {
-    return new CoverageReporterService();
-  }
-
-  ensureDirectory(dirPath) {
-    if (!this.fs.existsSync(dirPath)) {
-      this.fs.mkdirSync(dirPath, { recursive: true });
+    constructor(shellUtil, fsApi) {
+        this.shell = shellUtil || new ShellUtil();
+        this.fs = fsApi || external_node_fs_namespaceObject_0;
     }
-  }
 
-  runCoverage(coverageCommand) {
-    console.log(`🧪 Running coverage command: ${coverageCommand}`);
-    try {
-      const output = this.shell.run(coverageCommand, { stdio: 'pipe' });
-      return { success: true, output };
-    } catch (error) {
-      return { success: false, error: error.message };
+    static create() {
+        return new CoverageReporterService();
     }
-  }
 
-  parseCoverageFromOutput(output) {
-    // Parse coverage from c8 or jest output
-    const lines = output.split('\n');
+    ensureDirectory(dirPath) {
+        if (!this.fs.existsSync(dirPath)) {
+            this.fs.mkdirSync(dirPath, { recursive: true });
+        }
+    }
 
-    // Look for c8 summary line
-    const summaryLine = lines.find((line) => line.includes('All files'));
+    runCoverage(coverageCommand) {
+        console.log(`🧪 Running coverage command: ${coverageCommand}`);
+        try {
+            const result = this.shell.exec(coverageCommand, { stdio: 'pipe' });
+            return { success: true, output: result.stdout };
+        } catch (error) {
+            return { success: false, error: error.message };
+        }
+    }
 
-    if (summaryLine) {
-      // Extract percentages from c8 output
-      const percentageMatches = summaryLine.match(/(\d+\.?\d*)/g);
-      if (percentageMatches && percentageMatches.length >= 4) {
+    parseCoverageFromOutput(output) {
+        // Parse coverage from c8 or jest output
+        const lines = output.split('\n');
+
+        // Look for c8 summary line
+        const summaryLine = lines.find((line) => line.includes('All files'));
+
+        if (summaryLine) {
+            // Extract percentages from c8 output
+            const percentageMatches = summaryLine.match(/(\d+\.?\d*)/g);
+            if (percentageMatches && percentageMatches.length >= 4) {
+                return {
+                    statements: parseFloat(percentageMatches[0]),
+                    branches: parseFloat(percentageMatches[1]),
+                    functions: parseFloat(percentageMatches[2]),
+                    lines: parseFloat(percentageMatches[3]),
+                };
+            }
+        }
+
+        // Fallback: look for common coverage patterns
+        const coveragePattern = /(\d+\.?\d*)%/g;
+        const matches = output.match(coveragePattern);
+        if (matches && matches.length > 0) {
+            const percentage = parseFloat(matches[0].replace('%', ''));
+            return {
+                statements: percentage,
+                branches: percentage,
+                functions: percentage,
+                lines: percentage,
+            };
+        }
+
         return {
-          statements: parseFloat(percentageMatches[0]),
-          branches: parseFloat(percentageMatches[1]),
-          functions: parseFloat(percentageMatches[2]),
-          lines: parseFloat(percentageMatches[3]),
+            statements: 0,
+            branches: 0,
+            functions: 0,
+            lines: 0,
         };
-      }
     }
 
-    // Fallback: look for common coverage patterns
-    const coveragePattern = /(\d+\.?\d*)%/g;
-    const matches = output.match(coveragePattern);
-    if (matches && matches.length > 0) {
-      const percentage = parseFloat(matches[0].replace('%', ''));
-      return {
-        statements: percentage,
-        branches: percentage,
-        functions: percentage,
-        lines: percentage,
-      };
+    calculateOverallCoverage(coverage) {
+        return (
+            (coverage.statements +
+                coverage.branches +
+                coverage.functions +
+                coverage.lines) /
+            4
+        );
     }
 
-    return {
-      statements: 0,
-      branches: 0,
-      functions: 0,
-      lines: 0,
-    };
-  }
+    generateMarkdownReport(coverage, minimumCoverage) {
+        const overallCoverage = this.calculateOverallCoverage(coverage);
 
-  calculateOverallCoverage(coverage) {
-    return (
-      (coverage.statements +
-        coverage.branches +
-        coverage.functions +
-        coverage.lines) /
-      4
-    );
-  }
+        const getStatus = (percentage) => {
+            if (percentage >= 80) return '✅ Good';
+            if (percentage >= 60) return '⚠️ Fair';
+            return '❌ Poor';
+        };
 
-  generateMarkdownReport(coverage, minimumCoverage) {
-    const overallCoverage = this.calculateOverallCoverage(coverage);
+        const getChangeIcon = (percentage, minimum) => {
+            if (percentage >= minimum) return '✅';
+            return '❌';
+        };
 
-    const getStatus = (percentage) => {
-      if (percentage >= 80) return '✅ Good';
-      if (percentage >= 60) return '⚠️ Fair';
-      return '❌ Poor';
-    };
+        let report = `## 📊 Coverage Report\n\n`;
 
-    const getChangeIcon = (percentage, minimum) => {
-      if (percentage >= minimum) return '✅';
-      return '❌';
-    };
+        report += `### Overall Coverage: ${overallCoverage.toFixed(2)}% ${getChangeIcon(overallCoverage, minimumCoverage)}\n\n`;
 
-    let report = `## 📊 Coverage Report\n\n`;
+        report += `| Metric | Coverage | Status |\n`;
+        report += `|--------|----------|--------|\n`;
+        report += `| **Statements** | ${coverage.statements.toFixed(2)}% | ${getStatus(coverage.statements)} |\n`;
+        report += `| **Branches** | ${coverage.branches.toFixed(2)}% | ${getStatus(coverage.branches)} |\n`;
+        report += `| **Functions** | ${coverage.functions.toFixed(2)}% | ${getStatus(coverage.functions)} |\n`;
+        report += `| **Lines** | ${coverage.lines.toFixed(2)}% | ${getStatus(coverage.lines)} |\n\n`;
 
-    report += `### Overall Coverage: ${overallCoverage.toFixed(2)}% ${getChangeIcon(overallCoverage, minimumCoverage)}\n\n`;
+        if (overallCoverage < minimumCoverage) {
+            report += `⚠️ **Coverage is below minimum threshold of ${minimumCoverage}%**\n\n`;
+        }
 
-    report += `| Metric | Coverage | Status |\n`;
-    report += `|--------|----------|--------|\n`;
-    report += `| **Statements** | ${coverage.statements.toFixed(2)}% | ${getStatus(coverage.statements)} |\n`;
-    report += `| **Branches** | ${coverage.branches.toFixed(2)}% | ${getStatus(coverage.branches)} |\n`;
-    report += `| **Functions** | ${coverage.functions.toFixed(2)}% | ${getStatus(coverage.functions)} |\n`;
-    report += `| **Lines** | ${coverage.lines.toFixed(2)}% | ${getStatus(coverage.lines)} |\n\n`;
+        report += `---\n`;
+        report += `*Report generated by [Coverage Reporter](https://github.com/deresegetachew/systemcraft-stack-actions)*`;
 
-    if (overallCoverage < minimumCoverage) {
-      report += `⚠️ **Coverage is below minimum threshold of ${minimumCoverage}%**\n\n`;
+        return report;
     }
 
-    report += `---\n`;
-    report += `*Report generated by [Coverage Reporter](https://github.com/deresegetachew/systemcraft-stack-actions)*`;
+    async run(inputs) {
+        console.log('🚀 Starting coverage reporting...');
 
-    return report;
-  }
+        // Ensure output directory exists
+        this.ensureDirectory(inputs.outputDir);
 
-  async run(inputs) {
-    console.log('🚀 Starting coverage reporting...');
+        // Run coverage
+        const coverageResult = this.runCoverage(inputs.coverageCommand);
 
-    // Ensure output directory exists
-    this.ensureDirectory(inputs.outputDir);
+        if (!coverageResult.success) {
+            throw new Error(`Coverage command failed: ${coverageResult.error}`);
+        }
 
-    // Run coverage
-    const coverageResult = this.runCoverage(inputs.coverageCommand);
+        // Parse coverage data
+        const coverage = this.parseCoverageFromOutput(coverageResult.output);
+        const overallCoverage = this.calculateOverallCoverage(coverage);
 
-    if (!coverageResult.success) {
-      throw new Error(`Coverage command failed: ${coverageResult.error}`);
+        // Generate summary JSON
+        const summary = {
+            overall: overallCoverage,
+            details: coverage,
+            timestamp: new Date().toISOString(),
+            minimumCoverage: inputs.minimumCoverage,
+            status: overallCoverage >= inputs.minimumCoverage ? 'pass' : 'fail',
+        };
+
+        const summaryPath = external_node_path_namespaceObject.join(inputs.outputDir, 'coverage-summary.json');
+        this.fs.writeFileSync(summaryPath, JSON.stringify(summary, null, 2));
+
+        // Generate markdown report for PR comments
+        if (inputs.enablePrComments) {
+            const markdownReport = this.generateMarkdownReport(
+                coverage,
+                inputs.minimumCoverage,
+            );
+            const reportPath = external_node_path_namespaceObject.join(inputs.outputDir, 'coverage-report.md');
+            this.fs.writeFileSync(reportPath, markdownReport);
+            console.log(`✅ Coverage report saved to ${reportPath}`);
+        }
+
+        // Copy HTML reports if they exist
+        if (this.fs.existsSync('coverage')) {
+            console.log('📋 Copying HTML coverage reports...');
+            this.shell.exec(
+                `cp -r coverage ${external_node_path_namespaceObject.join(inputs.outputDir, 'html-report')}`,
+            );
+        }
+
+        console.log('🎉 Coverage reporting completed!');
+        console.log(`📊 Overall coverage: ${overallCoverage.toFixed(2)}%`);
+
+        return {
+            coveragePercentage: overallCoverage.toFixed(2),
+            status: summary.status,
+            artifactsPath: inputs.outputDir,
+            summary,
+        };
     }
-
-    // Parse coverage data
-    const coverage = this.parseCoverageFromOutput(coverageResult.output);
-    const overallCoverage = this.calculateOverallCoverage(coverage);
-
-    // Generate summary JSON
-    const summary = {
-      overall: overallCoverage,
-      details: coverage,
-      timestamp: new Date().toISOString(),
-      minimumCoverage: inputs.minimumCoverage,
-      status: overallCoverage >= inputs.minimumCoverage ? 'pass' : 'fail',
-    };
-
-    const summaryPath = external_node_path_namespaceObject.join(inputs.outputDir, 'coverage-summary.json');
-    this.fs.writeFileSync(summaryPath, JSON.stringify(summary, null, 2));
-
-    // Generate markdown report for PR comments
-    if (inputs.enablePrComments) {
-      const markdownReport = this.generateMarkdownReport(
-        coverage,
-        inputs.minimumCoverage,
-      );
-      const reportPath = external_node_path_namespaceObject.join(inputs.outputDir, 'coverage-report.md');
-      this.fs.writeFileSync(reportPath, markdownReport);
-      console.log(`✅ Coverage report saved to ${reportPath}`);
-    }
-
-    // Copy HTML reports if they exist
-    if (this.fs.existsSync('coverage')) {
-      console.log('📋 Copying HTML coverage reports...');
-      this.shell.run(
-        `cp -r coverage ${external_node_path_namespaceObject.join(inputs.outputDir, 'html-report')}`,
-      );
-    }
-
-    console.log('🎉 Coverage reporting completed!');
-    console.log(`📊 Overall coverage: ${overallCoverage.toFixed(2)}%`);
-
-    return {
-      coveragePercentage: overallCoverage.toFixed(2),
-      status: summary.status,
-      artifactsPath: inputs.outputDir,
-      summary,
-    };
-  }
 }
 
 ;// CONCATENATED MODULE: ./index.js

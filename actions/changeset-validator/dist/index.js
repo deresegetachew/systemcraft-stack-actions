@@ -31915,11 +31915,11 @@ class GitUtil {
   }
 
   createBranch(branchName, fromCommit = 'HEAD~1') {
-    this.shell.run(`git branch ${branchName} ${fromCommit}`);
+    this.shell.exec(`git branch ${branchName} ${fromCommit}`);
   }
 
   pushBranch(branchName) {
-    this.shell.run(`git push origin ${branchName}`);
+    this.shell.exec(`git push origin ${branchName}`);
   }
 
   getChangedFilesBetweenRefs(baseRef, headRef, baseSha, headSha) {
