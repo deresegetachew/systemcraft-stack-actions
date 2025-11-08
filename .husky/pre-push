@@ -1,5 +1,2 @@
-#!/usr/bin/env sh
-. "$(dirname -- "$0")/_/husky.sh"
-
 echo "Running pre-push checks: Type check, lint, and test..."
 pnpm build && pnpm lint && pnpm test
