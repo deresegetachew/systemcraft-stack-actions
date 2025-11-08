@@ -150,12 +150,7 @@ export class CoverageReporterService {
 
         // Parse coverage data
         const coverage = this.getCoverage(inputs);
-
-        console.log(`Coverage data: ${JSON.stringify(coverage, null, 2)}`)
-
         const overallCoverage = this.calculateOverallCoverage(coverage);
-
-        console.log(`📊 Overall coverage: ${overallCoverage.toFixed(2)}%`)
 
         // Generate summary JSON
         const summary = {
@@ -168,8 +163,6 @@ export class CoverageReporterService {
 
         const summaryPath = path.join(inputs.outputDir, 'coverage-summary.json');
         this.fs.writeFileSync(summaryPath, JSON.stringify(summary, null, 2));
-
-        console.log(`Enable Pr Comments`, inputs.enablePrComments)
 
         // Generate markdown report for PR comments
         if (inputs.enablePrComments) {
