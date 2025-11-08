@@ -226,10 +226,7 @@ export class GitUtil {
   }
 
   #buildRequestHeaders() {
-
-    console.log(
-      `token: ${this.githubToken}`
-    )
+    console.log(`token: ${this.githubToken}`);
 
     return {
       Authorization: `Bearer ${this.githubToken}`,
