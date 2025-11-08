@@ -5,6 +5,10 @@ inputs:
     description: 'Command to run tests with coverage'
     required: false
     default: 'pnpm test -- --coverage'
+  coverage-file:
+    description: 'Path to coverage.json file'
+    required: false
+    default: 'coverage/coverage-summary.json'
   coverage-format:
     description: 'Coverage output format (lcov, json, text)'
     required: false

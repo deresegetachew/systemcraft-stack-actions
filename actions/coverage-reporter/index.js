@@ -6,6 +6,7 @@ export async function main() {
   try {
     const inputs = {
       coverageCommand: core.getInput('coverage-command'),
+      coverageFile: core.getInput('coverage-file'),
       coverageFormat: core.getInput('coverage-format'),
       outputDir: core.getInput('output-dir'),
       enablePrComments: core.getBooleanInput('enable-pr-comments'),

@@ -70,6 +70,16 @@ export class CoverageReporterService {
         };
     }
 
+    parseCoverageFromSummary(summary) {
+        const { total } = summary;
+        return {
+            statements: total.statements.pct,
+            branches: total.branches.pct,
+            functions: total.functions.pct,
+            lines: total.lines.pct,
+        };
+    }
+
     calculateOverallCoverage(coverage) {
         return (
             (coverage.statements +
@@ -115,22 +125,37 @@ export class CoverageReporterService {
         return report;
     }
 
-    async run(inputs) {
-        console.log('🚀 Starting coverage reporting...');
+    getCoverage(inputs) {
+        if (inputs.coverageFile && this.fs.existsSync(inputs.coverageFile)) {
+            const summary = JSON.parse(
+                this.fs.readFileSync(inputs.coverageFile, 'utf8'),
+            );
+            return this.parseCoverageFromSummary(summary);
+        }
 
-        // Ensure output directory exists
-        this.ensureDirectory(inputs.outputDir);
-
-        // Run coverage
         const coverageResult = this.runCoverage(inputs.coverageCommand);
 
         if (!coverageResult.success) {
             throw new Error(`Coverage command failed: ${coverageResult.error}`);
         }
 
+        return this.parseCoverageFromOutput(coverageResult.output);
+    }
+
+    async run(inputs) {
+        console.log('🚀 Starting coverage reporting...');
+
+        // Ensure output directory exists
+        this.ensureDirectory(inputs.outputDir);
+
         // Parse coverage data
-        const coverage = this.parseCoverageFromOutput(coverageResult.output);
+        const coverage = this.getCoverage(inputs);
+
+        console.log(`Coverage data: ${JSON.stringify(coverage, null, 2)}`)
+
         const overallCoverage = this.calculateOverallCoverage(coverage);
+
+        console.log(`📊 Overall coverage: ${overallCoverage.toFixed(2)}%`)
 
         // Generate summary JSON
         const summary = {
@@ -143,6 +168,8 @@ export class CoverageReporterService {
 
         const summaryPath = path.join(inputs.outputDir, 'coverage-summary.json');
         this.fs.writeFileSync(summaryPath, JSON.stringify(summary, null, 2));
+
+        console.log(`Enable Pr Comments`, inputs.enablePrComments)
 
         // Generate markdown report for PR comments
         if (inputs.enablePrComments) {
