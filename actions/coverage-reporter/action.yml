@@ -29,6 +29,18 @@ inputs:
     description: 'GitHub token for API access'
     required: false
     default: ${{ github.token }}
+  enable-diff:
+    description: 'Enable coverage diff comparison against baseline'
+    required: false
+    default: 'true'
+  baseline-artifact-name:
+    description: 'Name of the baseline coverage artifact to compare against'
+    required: false
+    default: 'coverage-baseline-main'
+  base-branch:
+    description: 'Base branch name for baseline comparison'
+    required: false
+    default: 'main'
 outputs:
   coverage-percentage:
     description: 'Overall coverage percentage'

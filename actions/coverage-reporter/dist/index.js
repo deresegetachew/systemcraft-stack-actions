@@ -27495,6 +27495,8 @@ const external_node_fs_namespaceObject = __WEBPACK_EXTERNAL_createRequire(import
 var external_node_fs_namespaceObject_0 = /*#__PURE__*/__nccwpck_require__.t(external_node_fs_namespaceObject, 2);
 ;// CONCATENATED MODULE: external "node:path"
 const external_node_path_namespaceObject = __WEBPACK_EXTERNAL_createRequire(import.meta.url)("node:path");
+;// CONCATENATED MODULE: external "node:os"
+const external_node_os_namespaceObject = __WEBPACK_EXTERNAL_createRequire(import.meta.url)("node:os");
 ;// CONCATENATED MODULE: ../../libs/utils/fs/fs.util.js
 
 
@@ -27598,6 +27600,260 @@ class FSUtil {
       // ignore
     }
     return path.basename(pkgDir);
+  }
+}
+
+;// CONCATENATED MODULE: ../../libs/utils/git/git.util.js
+class GitUtil {
+  constructor(shellService, githubToken = null) {
+    this.shell = shellService;
+    this.githubToken = githubToken;
+  }
+
+  async getChangedFiles() {
+    const strategies = [
+      'git diff --name-only HEAD~1..HEAD',
+      'git diff --name-only HEAD^..HEAD',
+    ];
+
+    for (const command of strategies) {
+      try {
+        console.log(`Trying: ${command}`);
+        const result = this.shell.exec(command, { stdio: 'pipe' });
+        const files = result.stdout.split('\n').filter(Boolean);
+
+        console.log(`result.stdout:\n${result.stdout}`);
+        console.log(`Files changed:\n${files.join('\n')}`);
+
+        if (files.length > 0) {
+          console.log(
+            `✅ Found ${files.length} changed files using: ${command}`,
+          );
+          return files;
+        }
+      } catch (error) {
+        console.log(`❌ Failed: ${command} - ${error.message}`);
+      }
+    }
+
+    console.warn('⚠️  No git strategy worked, returning empty array');
+    return [];
+  }
+
+  checkRemoteBranch(branchName) {
+    const result = this.shell.exec(
+      `git ls-remote --heads origin ${branchName}`,
+      { stdio: 'pipe' },
+    );
+    return result.stdout.trim() !== '';
+  }
+
+  createBranch(branchName, fromCommit = 'HEAD~1') {
+    this.shell.exec(`git branch ${branchName} ${fromCommit}`);
+  }
+
+  pushBranch(branchName) {
+    this.shell.exec(`git push origin ${branchName}`);
+  }
+
+  getChangedFilesBetweenRefs(baseRef, headRef, baseSha, headSha) {
+    const strategies = [
+      // Strategy 1: Use branch references (most reliable)
+      () => {
+        if (!headRef) return '';
+        try {
+          const result = this.shell.exec(
+            `git diff --name-only origin/${baseRef}...origin/${headRef}`,
+            { stdio: 'pipe' },
+          );
+          return result.stdout;
+        } catch {
+          return '';
+        }
+      },
+
+      // Strategy 2: Use SHAs with three-dot syntax (finds merge base automatically)
+      () => {
+        if (!baseSha || !headSha) return '';
+        try {
+          const result = this.shell.exec(
+            `git diff --name-only ${baseSha}...${headSha}`,
+            { stdio: 'pipe' },
+          );
+          return result.stdout;
+        } catch {
+          return '';
+        }
+      },
+
+      // Strategy 3: Use SHAs with two-dot syntax
+      () => {
+        if (!baseSha || !headSha) return '';
+        try {
+          const result = this.shell.exec(
+            `git diff --name-only ${baseSha}..${headSha}`,
+            { stdio: 'pipe' },
+          );
+          return result.stdout;
+        } catch {
+          return '';
+        }
+      },
+
+      // Strategy 4: Compare HEAD to base branch
+      () => {
+        try {
+          const result = this.shell.exec(
+            `git diff --name-only origin/${baseRef}...HEAD`,
+            { stdio: 'pipe' },
+          );
+          return result.stdout;
+        } catch {
+          return '';
+        }
+      },
+    ];
+
+    for (let i = 0; i < strategies.length; i++) {
+      console.log(`Trying diff strategy ${i + 1}...`);
+      const result = strategies[i]();
+      if (result && result.trim()) {
+        const files = result.trim().split('\n').filter(Boolean);
+        console.log(
+          `✅ Successfully got ${files.length} changed files using strategy ${i + 1}`,
+        );
+        return files;
+      }
+    }
+
+    throw new Error('Could not get changed files with any method');
+  }
+
+  fetchBranch(ref) {
+    try {
+      this.shell.exec(`git fetch origin ${ref}`, { stdio: 'inherit' });
+    } catch (error) {
+      throw new Error(`Failed to fetch branch ${ref}: ${error.message}`);
+    }
+  }
+
+  async downloadLatestArtifact({ owner, repoName, artifactName }, outputPath) {
+    const headers = this.#buildRequestHeaders();
+
+    // list artifacts
+    const listReqURL = this.#buildRequestURI('list', { owner, repoName });
+    const listResponse = await fetch(listReqURL, { headers });
+
+    if (!listResponse.ok) {
+      console.warn(
+        `Warning: Failed to list artifacts (${listResponse.status} ${listResponse.statusText}).`,
+      );
+      return null;
+    }
+
+    const listData = await listResponse.json();
+    const artifact = this.#findLatestArtifact(listData.artifacts);
+
+    // download artifact
+    const downloadURL = this.#buildRequestURI('download', {
+      owner,
+      repoName,
+      artifactID: artifact.id,
+    });
+    const downloadResponse = await fetch(downloadURL, {
+      headers,
+      redirect: 'follow',
+    });
+
+    if (!downloadResponse.ok) {
+      console.warn(
+        `Warning: Failed to download artifact (${downloadResponse.status} ${downloadResponse.statusText}).`,
+      );
+      return null;
+    }
+
+    return await downloadResponse.arrayBuffer();
+  }
+
+  #findLatestArtifact(artifacts) {
+    if (!Array.isArray(artifacts) || artifacts.length === 0) {
+      console.warn('Warning: No artifacts found.');
+      return null;
+    }
+
+    console.debug(
+      `artifacts found: ${artifacts.length}`,
+      JSON.stringify({
+        artifacts: artifacts.map((a) => ({
+          name: a.name,
+          expired: a.expired,
+          workflow_run_conclusion: a?.workflow_run?.conclusion,
+        })),
+      }),
+    );
+
+    const matchingArtifacts = artifacts
+      .filter(
+        (artifact) =>
+          !artifact.expired &&
+          artifact.workflow_run &&
+          this.#isArtifactRunSuccessful(artifact.workflow_run),
+      )
+      .sort(
+        (a, b) =>
+          new Date(b.created_at).getTime() - new Date(a.created_at).getTime(),
+      );
+
+    if (matchingArtifacts.length === 0) {
+      console.warn(`Warning: No active "${this.artifactName}" artifact found.`);
+      return null;
+    }
+
+    return matchingArtifacts[0];
+  }
+
+  #isArtifactRunSuccessful(runInfo = {}) {
+    // Some API responses omit conclusion, so treat missing as success unless explicitly failed/cancelled.
+    const conclusion = runInfo.conclusion ?? 'success';
+    return ![
+      'failure',
+      'cancelled',
+      'timed_out',
+      'action_required',
+      'stale',
+    ].includes(conclusion);
+  }
+
+  #buildRequestHeaders() {
+    return {
+      Authorization: `Bearer ${this.githubToken}`,
+      'User-Agent': 'coverage-collector-script',
+      'X-GitHub-Api-Version': '2022-11-28',
+      Accept: 'application/vnd.github+json',
+    };
+  }
+
+  #buildRequestURI(type, options) {
+    const apiUrl = process.env.GITHUB_API_URL || 'https://api.github.com';
+
+    switch (type) {
+      case 'list': {
+        const url = new URL(
+          `${apiUrl}/repos/${options.owner}/${options.repoName}/actions/artifacts`,
+        );
+        url.searchParams.set('name', options.artifactName);
+        url.searchParams.set('per_page', '100');
+
+        return url;
+      }
+      case 'download': {
+        return new URL(
+          `${apiUrl}/repos/${options.owner}/${options.repoName}/actions/artifacts/${options.artifactID}/zip`,
+        );
+      }
+      default:
+        throw new Error(`Unknown request type: ${type}`);
+    }
   }
 }
 
@@ -27900,203 +28156,430 @@ class ShellUtil {
 
 
 
+
 class CoverageReporterService {
-    constructor(shellUtil, fsApi) {
-        this.shell = shellUtil || new ShellUtil();
-        this.fs = fsApi || external_node_fs_namespaceObject_0;
+  constructor(shellUtil, fsApi, gitUtil) {
+    this.shell = shellUtil || new ShellUtil();
+    this.fs = fsApi || external_node_fs_namespaceObject_0;
+    this.git = gitUtil || new GitUtil(this.shell, process.env.GITHUB_TOKEN);
+    this.tempDir = external_node_path_namespaceObject.join(external_node_os_namespaceObject.tmpdir(), 'coverage-baseline');
+  }
+
+  static create() {
+    return new CoverageReporterService();
+  }
+
+  ensureDirectory(dirPath) {
+    if (!this.fs.existsSync(dirPath)) {
+      this.fs.mkdirSync(dirPath, { recursive: true });
+    }
+  }
+
+  normalizeInputs(inputs = {}) {
+    return {
+      ...inputs,
+      outputDir: inputs.outputDir || 'coverage-artifacts',
+      enableDiff: Boolean(inputs.enableDiff),
+      enablePrComments: Boolean(inputs.enablePrComments),
+      minimumCoverage: Number(inputs.minimumCoverage ?? 0),
+    };
+  }
+
+  shouldLoadCoverageFromFile(filePath) {
+    return Boolean(filePath && this.fs.existsSync(filePath));
+  }
+
+  readCoverageFromFile(filePath) {
+    const summary = JSON.parse(this.fs.readFileSync(filePath, 'utf8'));
+    return this.parseCoverageFromSummary(summary);
+  }
+
+  createSummary(coverage, baselineCoverage, minimumCoverage) {
+    const overallCoverage = this.calculateOverallCoverage(coverage);
+
+    return {
+      overall: overallCoverage,
+      details: coverage,
+      baseline: baselineCoverage,
+      timestamp: new Date().toISOString(),
+      minimumCoverage,
+      status: overallCoverage >= minimumCoverage ? 'pass' : 'fail',
+    };
+  }
+
+  persistSummaryFiles(summary, coverage, inputs) {
+    const summaryPath = external_node_path_namespaceObject.join(inputs.outputDir, 'coverage-summary.json');
+    this.fs.writeFileSync(summaryPath, JSON.stringify(summary, null, 2));
+
+    if (!inputs.enablePrComments) {
+      return;
     }
 
-    static create() {
-        return new CoverageReporterService();
+    const markdownReport = this.generateMarkdownReport(
+      coverage,
+      inputs.minimumCoverage,
+      summary.baseline,
+    );
+    const reportPath = external_node_path_namespaceObject.join(inputs.outputDir, 'coverage-report.md');
+    this.fs.writeFileSync(reportPath, markdownReport);
+    console.log(`✅ Coverage report saved to ${reportPath}`);
+  }
+
+  copyHtmlReports(outputDir) {
+    if (!this.fs.existsSync('coverage')) {
+      return;
     }
 
-    ensureDirectory(dirPath) {
-        if (!this.fs.existsSync(dirPath)) {
-            this.fs.mkdirSync(dirPath, { recursive: true });
-        }
+    console.log('📋 Copying HTML coverage reports...');
+    this.shell.exec(`cp -r coverage ${external_node_path_namespaceObject.join(outputDir, 'html-report')}`);
+  }
+
+  logFinalStats(summary, baselineCoverage) {
+    console.log('🎉 Coverage reporting completed!');
+    console.log(`📊 Overall coverage: ${summary.overall.toFixed(2)}%`);
+
+    if (!baselineCoverage) {
+      return;
     }
 
-    runCoverage(coverageCommand) {
-        console.log(`🧪 Running coverage command: ${coverageCommand}`);
-        try {
-            const result = this.shell.exec(coverageCommand, { stdio: 'pipe' });
-            return { success: true, output: result.stdout };
-        } catch (error) {
-            return { success: false, error: error.message };
-        }
+    const baselineOverall = this.calculateOverallCoverage(baselineCoverage);
+    const diff = summary.overall - baselineOverall;
+    const diffIcon = diff > 0 ? '⬆️' : diff < 0 ? '⬇️' : '➡️';
+    console.log(
+      `📈 Coverage change: ${diff > 0 ? '+' : ''}${diff.toFixed(2)}% ${diffIcon}`,
+    );
+  }
+
+  runCoverage(coverageCommand) {
+    console.log(`🧪 Running coverage command: ${coverageCommand}`);
+    try {
+      const result = this.shell.exec(coverageCommand, { stdio: 'pipe' });
+      return { success: true, output: result.stdout };
+    } catch (error) {
+      return { success: false, error: error.message };
     }
+  }
 
-    parseCoverageFromOutput(output) {
-        // Parse coverage from c8 or jest output
-        const lines = output.split('\n');
+  parseCoverageFromOutput(output) {
+    // Parse coverage from c8 or jest output
+    const lines = output.split('\n');
 
-        // Look for c8 summary line
-        const summaryLine = lines.find((line) => line.includes('All files'));
+    // Look for c8 summary line
+    const summaryLine = lines.find((line) => line.includes('All files'));
 
-        if (summaryLine) {
-            // Extract percentages from c8 output
-            const percentageMatches = summaryLine.match(/(\d+\.?\d*)/g);
-            if (percentageMatches && percentageMatches.length >= 4) {
-                return {
-                    statements: parseFloat(percentageMatches[0]),
-                    branches: parseFloat(percentageMatches[1]),
-                    functions: parseFloat(percentageMatches[2]),
-                    lines: parseFloat(percentageMatches[3]),
-                };
-            }
-        }
-
-        // Fallback: look for common coverage patterns
-        const coveragePattern = /(\d+\.?\d*)%/g;
-        const matches = output.match(coveragePattern);
-        if (matches && matches.length > 0) {
-            const percentage = parseFloat(matches[0].replace('%', ''));
-            return {
-                statements: percentage,
-                branches: percentage,
-                functions: percentage,
-                lines: percentage,
-            };
-        }
-
+    if (summaryLine) {
+      // Extract percentages from c8 output
+      const percentageMatches = summaryLine.match(/(\d+\.?\d*)/g);
+      if (percentageMatches && percentageMatches.length >= 4) {
         return {
-            statements: 0,
-            branches: 0,
-            functions: 0,
-            lines: 0,
+          statements: parseFloat(percentageMatches[0]),
+          branches: parseFloat(percentageMatches[1]),
+          functions: parseFloat(percentageMatches[2]),
+          lines: parseFloat(percentageMatches[3]),
         };
+      }
     }
 
-    parseCoverageFromSummary(summary) {
-        const { total } = summary;
-        return {
-            statements: total.statements.pct,
-            branches: total.branches.pct,
-            functions: total.functions.pct,
-            lines: total.lines.pct,
-        };
+    // Fallback: look for common coverage patterns
+    const coveragePattern = /(\d+\.?\d*)%/g;
+    const matches = output.match(coveragePattern);
+    if (matches && matches.length > 0) {
+      const percentage = parseFloat(matches[0].replace('%', ''));
+      return {
+        statements: percentage,
+        branches: percentage,
+        functions: percentage,
+        lines: percentage,
+      };
     }
 
-    calculateOverallCoverage(coverage) {
-        return (
-            (coverage.statements +
-                coverage.branches +
-                coverage.functions +
-                coverage.lines) /
-            4
-        );
+    return {
+      statements: 0,
+      branches: 0,
+      functions: 0,
+      lines: 0,
+    };
+  }
+
+  parseCoverageFromSummary(summary) {
+    const { total } = summary;
+    return {
+      statements: total.statements.pct,
+      branches: total.branches.pct,
+      functions: total.functions.pct,
+      lines: total.lines.pct,
+    };
+  }
+
+  calculateOverallCoverage(coverage) {
+    return (
+      (coverage.statements +
+        coverage.branches +
+        coverage.functions +
+        coverage.lines) /
+      4
+    );
+  }
+
+  generateMarkdownReport(coverage, minimumCoverage, baselineCoverage = null) {
+    const overallCoverage = this.calculateOverallCoverage(coverage);
+
+    const getStatus = (percentage) => {
+      if (percentage >= 80) return '✅ Good';
+      if (percentage >= 60) return '⚠️ Fair';
+      return '❌ Poor';
+    };
+
+    const getChangeIcon = (percentage, minimum) => {
+      if (percentage >= minimum) return '✅';
+      return '❌';
+    };
+
+    const getDiffIcon = (current, baseline) => {
+      if (!baseline) return '';
+      const diff = current - baseline;
+      if (Math.abs(diff) < 0.01) return ' ➡️'; // No change
+      return diff > 0 ? ' ⬆️' : ' ⬇️';
+    };
+
+    const formatDiff = (current, baseline) => {
+      if (!baseline) return '';
+      const diff = current - baseline;
+      if (Math.abs(diff) < 0.01) return '';
+      const sign = diff > 0 ? '+' : '';
+      return ` (${sign}${diff.toFixed(2)}%)`;
+    };
+
+    let report = `## 📊 Coverage Report\n\n`;
+
+    const baselineOverall = baselineCoverage
+      ? this.calculateOverallCoverage(baselineCoverage)
+      : null;
+    const overallDiff = getDiffIcon(overallCoverage, baselineOverall);
+    const overallChange = formatDiff(overallCoverage, baselineOverall);
+
+    report += `### Overall Coverage: ${overallCoverage.toFixed(2)}%${overallChange}${overallDiff} ${getChangeIcon(overallCoverage, minimumCoverage)}\n\n`;
+
+    report += `| Metric | Coverage | Status |\n`;
+    report += `|--------|----------|--------|\n`;
+
+    const metrics = [
+      { key: 'statements', label: 'Statements' },
+      { key: 'branches', label: 'Branches' },
+      { key: 'functions', label: 'Functions' },
+      { key: 'lines', label: 'Lines' },
+    ];
+
+    for (const metric of metrics) {
+      const current = coverage[metric.key];
+      const baseline = baselineCoverage?.[metric.key];
+      const diff = getDiffIcon(current, baseline);
+      const change = formatDiff(current, baseline);
+
+      report += `| **${metric.label}** | ${current.toFixed(2)}%${change}${diff} | ${getStatus(current)} |\n`;
     }
 
-    generateMarkdownReport(coverage, minimumCoverage) {
-        const overallCoverage = this.calculateOverallCoverage(coverage);
+    report += '\n';
 
-        const getStatus = (percentage) => {
-            if (percentage >= 80) return '✅ Good';
-            if (percentage >= 60) return '⚠️ Fair';
-            return '❌ Poor';
-        };
-
-        const getChangeIcon = (percentage, minimum) => {
-            if (percentage >= minimum) return '✅';
-            return '❌';
-        };
-
-        let report = `## 📊 Coverage Report\n\n`;
-
-        report += `### Overall Coverage: ${overallCoverage.toFixed(2)}% ${getChangeIcon(overallCoverage, minimumCoverage)}\n\n`;
-
-        report += `| Metric | Coverage | Status |\n`;
-        report += `|--------|----------|--------|\n`;
-        report += `| **Statements** | ${coverage.statements.toFixed(2)}% | ${getStatus(coverage.statements)} |\n`;
-        report += `| **Branches** | ${coverage.branches.toFixed(2)}% | ${getStatus(coverage.branches)} |\n`;
-        report += `| **Functions** | ${coverage.functions.toFixed(2)}% | ${getStatus(coverage.functions)} |\n`;
-        report += `| **Lines** | ${coverage.lines.toFixed(2)}% | ${getStatus(coverage.lines)} |\n\n`;
-
-        if (overallCoverage < minimumCoverage) {
-            report += `⚠️ **Coverage is below minimum threshold of ${minimumCoverage}%**\n\n`;
-        }
-
-        report += `---\n`;
-        report += `*Report generated by [Coverage Reporter](https://github.com/deresegetachew/systemcraft-stack-actions)*`;
-
-        return report;
+    if (overallCoverage < minimumCoverage) {
+      report += `⚠️ **Coverage is below minimum threshold of ${minimumCoverage}%**\n\n`;
     }
 
-    getCoverage(inputs) {
-        if (inputs.coverageFile && this.fs.existsSync(inputs.coverageFile)) {
-            const summary = JSON.parse(
-                this.fs.readFileSync(inputs.coverageFile, 'utf8'),
-            );
-            return this.parseCoverageFromSummary(summary);
-        }
-
-        const coverageResult = this.runCoverage(inputs.coverageCommand);
-
-        if (!coverageResult.success) {
-            throw new Error(`Coverage command failed: ${coverageResult.error}`);
-        }
-
-        return this.parseCoverageFromOutput(coverageResult.output);
+    if (baselineCoverage) {
+      report += `📊 *Comparison with baseline from previous successful run*\n\n`;
     }
 
-    async run(inputs) {
-        console.log('🚀 Starting coverage reporting...');
+    report += `---\n`;
+    report += `*Report generated by [Coverage Reporter](https://github.com/deresegetachew/systemcraft-stack-actions)*`;
 
-        // Ensure output directory exists
-        this.ensureDirectory(inputs.outputDir);
+    return report;
+  }
 
-        // Parse coverage data
-        const coverage = this.getCoverage(inputs);
-
-        console.log(`Coverage data: ${JSON.stringify(coverage, null, 2)}`)
-
-        const overallCoverage = this.calculateOverallCoverage(coverage);
-
-        console.log(`📊 Overall coverage: ${overallCoverage.toFixed(2)}%`)
-
-        // Generate summary JSON
-        const summary = {
-            overall: overallCoverage,
-            details: coverage,
-            timestamp: new Date().toISOString(),
-            minimumCoverage: inputs.minimumCoverage,
-            status: overallCoverage >= inputs.minimumCoverage ? 'pass' : 'fail',
-        };
-
-        const summaryPath = external_node_path_namespaceObject.join(inputs.outputDir, 'coverage-summary.json');
-        this.fs.writeFileSync(summaryPath, JSON.stringify(summary, null, 2));
-
-        console.log(`Enable Pr Comments`, inputs.enablePrComments)
-
-        // Generate markdown report for PR comments
-        if (inputs.enablePrComments) {
-            const markdownReport = this.generateMarkdownReport(
-                coverage,
-                inputs.minimumCoverage,
-            );
-            const reportPath = external_node_path_namespaceObject.join(inputs.outputDir, 'coverage-report.md');
-            this.fs.writeFileSync(reportPath, markdownReport);
-            console.log(`✅ Coverage report saved to ${reportPath}`);
-        }
-
-        // Copy HTML reports if they exist
-        if (this.fs.existsSync('coverage')) {
-            console.log('📋 Copying HTML coverage reports...');
-            this.shell.exec(
-                `cp -r coverage ${external_node_path_namespaceObject.join(inputs.outputDir, 'html-report')}`,
-            );
-        }
-
-        console.log('🎉 Coverage reporting completed!');
-        console.log(`📊 Overall coverage: ${overallCoverage.toFixed(2)}%`);
-
-        return {
-            coveragePercentage: overallCoverage.toFixed(2),
-            status: summary.status,
-            artifactsPath: inputs.outputDir,
-            summary,
-        };
+  getCoverage(inputs) {
+    if (this.shouldLoadCoverageFromFile(inputs.coverageFile)) {
+      return this.readCoverageFromFile(inputs.coverageFile);
     }
+
+    if (!inputs.coverageCommand) {
+      throw new Error('Coverage command not provided');
+    }
+
+    const coverageResult = this.runCoverage(inputs.coverageCommand);
+
+    if (!coverageResult.success) {
+      throw new Error(`Coverage command failed: ${coverageResult.error}`);
+    }
+
+    return this.parseCoverageFromOutput(coverageResult.output);
+  }
+
+  shouldDownloadBaseline(inputs) {
+    if (!inputs.enableDiff || !inputs.baselineArtifactName) {
+      console.log(
+        '📊 Baseline comparison disabled or no artifact name provided',
+      );
+      return false;
+    }
+
+    if (!inputs.githubToken) {
+      console.warn('⚠️ GitHub token not available, skipping baseline download');
+      return false;
+    }
+
+    if (!process.env.GITHUB_REPOSITORY) {
+      console.warn('⚠️ GITHUB_REPOSITORY not set, skipping baseline download');
+      return false;
+    }
+
+    return true;
+  }
+
+  parseRepository(repo) {
+    const [owner, repoName] = (repo || '').split('/');
+    if (!owner || !repoName) {
+      console.warn(`⚠️ Could not parse repository "${repo}"`);
+      return null;
+    }
+    return { owner, repoName };
+  }
+
+  getBaselineZipPath() {
+    return external_node_path_namespaceObject.join(this.tempDir, 'baseline.zip');
+  }
+
+  getBaselineExtractPath() {
+    return external_node_path_namespaceObject.join(this.tempDir, 'extracted');
+  }
+
+  prepareBaselineWorkspace() {
+    this.ensureDirectory(this.tempDir);
+    const extractDir = this.getBaselineExtractPath();
+    this.fs.rmSync(extractDir, { recursive: true, force: true });
+    this.ensureDirectory(extractDir);
+    return extractDir;
+  }
+
+  writeArtifactZip(artifactBuffer) {
+    this.fs.writeFileSync(
+      this.getBaselineZipPath(),
+      Buffer.from(artifactBuffer),
+    );
+  }
+
+  unpackBaselineZip(zipPath, extractDir) {
+    try {
+      this.shell.exec(`unzip -q -o "${zipPath}" -d "${extractDir}"`);
+      return true;
+    } catch (error) {
+      console.warn(`⚠️ Failed to extract baseline artifact: ${error.message}`);
+      return false;
+    }
+  }
+
+  findBaselineSummaryFile(extractDir) {
+    const possiblePaths = [
+      external_node_path_namespaceObject.join(extractDir, 'coverage-summary.json'),
+      external_node_path_namespaceObject.join(extractDir, 'coverage-artifacts', 'coverage-summary.json'),
+      external_node_path_namespaceObject.join(extractDir, 'coverage', 'coverage-summary.json'),
+    ];
+
+    return possiblePaths.find((summaryPath) => this.fs.existsSync(summaryPath));
+  }
+
+  readBaselineCoverage(extractDir) {
+    const summaryPath = this.findBaselineSummaryFile(extractDir);
+
+    if (!summaryPath) {
+      console.warn('⚠️ No coverage summary found in baseline artifact');
+      return null;
+    }
+
+    const baselineData = JSON.parse(this.fs.readFileSync(summaryPath, 'utf8'));
+    console.log('✅ Baseline coverage loaded successfully');
+    return (
+      baselineData.details ||
+      this.parseCoverageFromSummary({ total: baselineData })
+    );
+  }
+
+  cleanupBaselineWorkspace() {
+    this.fs.rmSync(this.tempDir, { recursive: true, force: true });
+  }
+
+  async downloadBaseline(inputs) {
+    if (!this.shouldDownloadBaseline(inputs)) {
+      return null;
+    }
+
+    const repoInfo = this.parseRepository(process.env.GITHUB_REPOSITORY);
+    if (!repoInfo) {
+      return null;
+    }
+
+    let baselineCoverage = null;
+
+    try {
+      console.log(
+        `📦 Downloading baseline artifact: ${inputs.baselineArtifactName}`,
+      );
+
+      const artifactBuffer = await this.git.downloadLatestArtifact({
+        owner: repoInfo.owner,
+        repoName: repoInfo.repoName,
+        artifactName: inputs.baselineArtifactName,
+      });
+
+      if (!artifactBuffer) {
+        console.warn('⚠️ No baseline artifact found');
+        return null;
+      }
+
+      const extractDir = this.prepareBaselineWorkspace();
+      this.writeArtifactZip(artifactBuffer);
+
+      if (!this.unpackBaselineZip(this.getBaselineZipPath(), extractDir)) {
+        return null;
+      }
+
+      baselineCoverage = this.readBaselineCoverage(extractDir);
+      return baselineCoverage;
+    } catch (error) {
+      console.warn(`⚠️ Failed to download baseline: ${error.message}`);
+      return null;
+    } finally {
+      this.cleanupBaselineWorkspace();
+    }
+  }
+
+  async run(inputs) {
+    console.log('🚀 Starting coverage reporting...');
+
+    const normalizedInputs = this.normalizeInputs(inputs);
+    this.ensureDirectory(normalizedInputs.outputDir);
+
+    const baselineCoverage = await this.downloadBaseline(normalizedInputs);
+    const coverage = this.getCoverage(normalizedInputs);
+
+    console.log(`Coverage data: ${JSON.stringify(coverage, null, 2)}`);
+
+    const summary = this.createSummary(
+      coverage,
+      baselineCoverage,
+      normalizedInputs.minimumCoverage,
+    );
+
+    this.persistSummaryFiles(summary, coverage, normalizedInputs);
+    this.copyHtmlReports(normalizedInputs.outputDir);
+    this.logFinalStats(summary, baselineCoverage);
+
+    return {
+      coveragePercentage: summary.overall.toFixed(2),
+      status: summary.status,
+      artifactsPath: normalizedInputs.outputDir,
+      summary,
+      baselineCoverage,
+    };
+  }
 }
 
 ;// CONCATENATED MODULE: ./index.js
@@ -28105,38 +28588,41 @@ class CoverageReporterService {
 
 
 async function main() {
-    try {
-        const inputs = {
-            coverageCommand: core.getInput('coverage-command'),
-            coverageFile: core.getInput('coverage-file'),
-            coverageFormat: core.getInput('coverage-format'),
-            outputDir: core.getInput('output-dir'),
-            enablePrComments: core.getBooleanInput('enable-pr-comments'),
-            minimumCoverage: parseFloat(core.getInput('minimum-coverage')),
-            githubToken: core.getInput('github-token'),
-        };
+  try {
+    const inputs = {
+      coverageCommand: core.getInput('coverage-command'),
+      coverageFile: core.getInput('coverage-file'),
+      coverageFormat: core.getInput('coverage-format'),
+      outputDir: core.getInput('output-dir'),
+      enablePrComments: core.getBooleanInput('enable-pr-comments'),
+      minimumCoverage: parseFloat(core.getInput('minimum-coverage')),
+      githubToken: core.getInput('github-token'),
+      enableDiff: core.getBooleanInput('enable-diff'),
+      baselineArtifactName: core.getInput('baseline-artifact-name'),
+      baseBranch: core.getInput('base-branch'),
+    };
 
-        const service = new CoverageReporterService();
-        const result = await service.run(inputs);
+    const service = new CoverageReporterService();
+    const result = await service.run(inputs);
 
-        // Set outputs
-        core.setOutput('coverage-percentage', result.coveragePercentage);
-        core.setOutput('coverage-status', result.status);
-        core.setOutput('artifacts-path', result.artifactsPath);
+    // Set outputs
+    core.setOutput('coverage-percentage', result.coveragePercentage);
+    core.setOutput('coverage-status', result.status);
+    core.setOutput('artifacts-path', result.artifactsPath);
 
-        // if (result.status === 'fail') {
-        //   core.setFailed(
-        //     `Coverage ${result.coveragePercentage}% is below minimum threshold ${inputs.minimumCoverage}%`,
-        //   );
-        // }
-    } catch (error) {
-        core.setFailed(`Coverage reporter failed: ${error.message}`);
-    }
+    // if (result.status === 'fail') {
+    //   core.setFailed(
+    //     `Coverage ${result.coveragePercentage}% is below minimum threshold ${inputs.minimumCoverage}%`,
+    //   );
+    // }
+  } catch (error) {
+    core.setFailed(`Coverage reporter failed: ${error.message}`);
+  }
 }
 
 // Only run if this file is executed directly
 if (process.env.NODE_ENV !== 'test') {
-    main();
+  main();
 }
 
 var __webpack_exports__main = __webpack_exports__.i;
