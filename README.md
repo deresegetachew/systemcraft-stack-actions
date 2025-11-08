@@ -4,7 +4,30 @@ A collection of reusable GitHub Actions for SystemCraft projects and other TypeS
 
 ## Available Actions
 
-### 🔍 Changeset Validator
+### � Coverage Reporter
+
+**Location:** `deresegetachew/systemcraft-stack-actions/actions/coverage-reporter@main`
+
+Collects test coverage, generates reports, and posts PR comments with coverage analysis. Perfect for maintaining code quality standards across your projects.
+
+**Features:**
+
+- Runs configurable coverage commands
+- Generates comprehensive markdown reports
+- Posts sticky PR comments with coverage analysis
+- Supports minimum coverage thresholds
+- Exports coverage artifacts and HTML reports
+
+**Inputs:**
+
+- `coverage-command` (optional): Command to run tests with coverage (default: `pnpm test -- --coverage`)
+- `coverage-format` (optional): Coverage output format (default: `lcov`)
+- `output-dir` (optional): Directory to output coverage artifacts (default: `coverage-artifacts`)
+- `enable-pr-comments` (optional): Enable coverage comments on PRs (default: `true`)
+- `minimum-coverage` (optional): Minimum coverage threshold percentage (default: `80`)
+- `github-token` (optional): GitHub token for API access
+
+### �🔍 Changeset Validator
 
 **Location:** `deresegetachew/systemcraft-stack-actions/actions/changeset-validator@main`
 
@@ -59,7 +82,7 @@ Publishes packages to npm and creates maintenance branches based on plans. Handl
 
 ## Usage Examples
 
-### Basic Workflow
+### Basic Workflow with Coverage
 
 ```yaml
 name: CI/CD
@@ -69,11 +92,26 @@ on:
     branches: [main]
 
 jobs:
-  validate-changeset:
+  test-and-coverage:
     runs-on: ubuntu-latest
+    permissions:
+      pull-requests: write  # Required for coverage comments
+      contents: read
     steps:
       - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      
+      # Validate changesets on PRs
       - uses: deresegetachew/systemcraft-stack-actions/actions/changeset-validator@main
+        if: github.event_name == 'pull_request'
+
+      # Generate coverage reports
+      - uses: deresegetachew/systemcraft-stack-actions/actions/coverage-reporter@main
+        with:
+          coverage-command: 'pnpm test -- --coverage'
+          minimum-coverage: '80'
 
   version:
     if: github.event_name == 'push'

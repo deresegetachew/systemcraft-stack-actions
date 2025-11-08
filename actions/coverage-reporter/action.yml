@@ -1,0 +1,37 @@
+name: 'Coverage Reporter'
+description: 'Collect test coverage, generate reports, and post PR comments with coverage analysis'
+inputs:
+  coverage-command:
+    description: 'Command to run tests with coverage'
+    required: false
+    default: 'pnpm test -- --coverage'
+  coverage-format:
+    description: 'Coverage output format (lcov, json, text)'
+    required: false
+    default: 'lcov'
+  output-dir:
+    description: 'Directory to output coverage artifacts'
+    required: false
+    default: 'coverage-artifacts'
+  enable-pr-comments:
+    description: 'Enable coverage comments on PRs'
+    required: false
+    default: 'true'
+  minimum-coverage:
+    description: 'Minimum coverage threshold percentage'
+    required: false
+    default: '80'
+  github-token:
+    description: 'GitHub token for API access'
+    required: false
+    default: ${{ github.token }}
+outputs:
+  coverage-percentage:
+    description: 'Overall coverage percentage'
+  coverage-status:
+    description: 'Coverage status (pass/fail)'
+  artifacts-path:
+    description: 'Path to coverage artifacts'
+runs:
+  using: node20
+  main: dist/index.js
