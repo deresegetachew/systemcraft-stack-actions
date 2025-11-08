@@ -62,7 +62,7 @@ __webpack_async_result__();
 /* harmony export */ __nccwpck_require__.d(__webpack_exports__, {
 /* harmony export */   p: () => (/* binding */ ReleaseService)
 /* harmony export */ });
-/* harmony import */ var _libs_utils_index_js__WEBPACK_IMPORTED_MODULE_0__ = __nccwpck_require__(418);
+/* harmony import */ var _systemcraft_stack_actions_utils__WEBPACK_IMPORTED_MODULE_0__ = __nccwpck_require__(418);
 
 
 class ReleaseService {
@@ -73,7 +73,7 @@ class ReleaseService {
   }
 
   static create(shell, fsApi) {
-    const gitService = new _libs_utils_index_js__WEBPACK_IMPORTED_MODULE_0__/* .GitUtil */ .Hc(shell);
+    const gitService = new _systemcraft_stack_actions_utils__WEBPACK_IMPORTED_MODULE_0__/* .GitUtil */ .Hc(shell);
     return new ReleaseService(gitService, shell, fsApi);
   }
 

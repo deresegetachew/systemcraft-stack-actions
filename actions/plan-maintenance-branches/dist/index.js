@@ -67,9 +67,7 @@ __webpack_async_result__();
 /* harmony export */ });
 /* unused harmony export createVersionService */
 /* harmony import */ var node_path__WEBPACK_IMPORTED_MODULE_0__ = __nccwpck_require__(760);
-/* harmony import */ var _libs_utils_index_js__WEBPACK_IMPORTED_MODULE_1__ = __nccwpck_require__(463);
-
-
+/* harmony import */ var _systemcraft_stack_actions_utils__WEBPACK_IMPORTED_MODULE_1__ = __nccwpck_require__(463);
 
 
 class VersionService {
@@ -83,19 +81,19 @@ class VersionService {
   }
 
   getMajorBumpPackages(baseDir) {
-    const files = (0,_libs_utils_index_js__WEBPACK_IMPORTED_MODULE_1__/* .loadChangesetFiles */ .kK)(this.fs, baseDir);
+    const files = (0,_systemcraft_stack_actions_utils__WEBPACK_IMPORTED_MODULE_1__/* .loadChangesetFiles */ .kK)(this.fs, baseDir);
     if (files.length === 0) {
       console.log('ℹ️ No changesets found.');
       return new Set();
     }
-    return _libs_utils_index_js__WEBPACK_IMPORTED_MODULE_1__/* .PackageUtil */ .Nb.extractMajorBumpPackagesFromChangesets(files);
+    return _systemcraft_stack_actions_utils__WEBPACK_IMPORTED_MODULE_1__/* .PackageUtil */ .Nb.extractMajorBumpPackagesFromChangesets(files);
   }
 
   generateMaintenancePlan(majorBumpPackages, baseDir) {
     const plan = {};
 
     for (const packageName of majorBumpPackages) {
-      const pkgInfo = (0,_libs_utils_index_js__WEBPACK_IMPORTED_MODULE_1__/* .getPackageInfo */ .rP)(packageName, this.fs, baseDir);
+      const pkgInfo = (0,_systemcraft_stack_actions_utils__WEBPACK_IMPORTED_MODULE_1__/* .getPackageInfo */ .rP)(packageName, this.fs, baseDir);
       if (!pkgInfo) {
         console.warn(
           `⚠️ Package info not found for ${packageName}. Skipping...`,

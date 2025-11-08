@@ -1,4 +1,4 @@
-import { GitUtil } from '../../../libs/utils/index.js';
+import { GitUtil } from '@systemcraft-stack-actions/utils';
 
 export class ReleaseService {
   constructor(gitService, shellService, fsApi) {

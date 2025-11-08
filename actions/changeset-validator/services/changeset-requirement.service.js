@@ -1,4 +1,4 @@
-import { GitUtil, ShellUtil } from '../../../libs/utils/index.js';
+import { GitUtil, ShellUtil } from '@systemcraft-stack-actions/utils';
 
 export class ChangesetRequirementService {
   constructor(dependencies = {}) {
