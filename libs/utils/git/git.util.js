@@ -135,7 +135,7 @@ export class GitUtil {
     const headers = this.#buildRequestHeaders();
 
     // list artifacts
-    const listReqURL = this.#buildRequestURI('list', { owner, repoName });
+    const listReqURL = this.#buildRequestURI('list', { owner, repoName, artifactName });
 
     console.log(`Fetching artifacts from ${listReqURL}`);
 
