@@ -31982,7 +31982,7 @@ class GitUtil {
 
     for (let i = 0; i < strategies.length; i++) {
       console.log(`Trying diff strategy ${i + 1}...`);
-      const result = strategies;
+      const result = strategies[i]();
       if (result && result.trim()) {
         const files = result.trim().split('\n').filter(Boolean);
         console.log(
