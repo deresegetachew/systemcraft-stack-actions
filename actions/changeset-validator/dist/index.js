@@ -32101,7 +32101,7 @@ class GitUtil {
 
   #buildRequestURI(type, options) {
     const apiUrl = process.env.GITHUB_API_URL || 'https://api.github.com';
-    
+
     switch (type) {
       case 'list': {
         const url = new URL(
