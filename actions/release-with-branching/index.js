@@ -7,7 +7,11 @@ import { ShellUtil } from '../../libs/utils/index.js';
 import { ReleaseService } from './services/release.service.js';
 
 // Main function with default dependencies
-export async function main(env = process.env, fsApi = fs, shellUtil = new ShellUtil()) {
+export async function main(
+  env = process.env,
+  fsApi = fs,
+  shellUtil = new ShellUtil(),
+) {
   const releaseService = ReleaseService.create(shellUtil, fsApi);
   return await releaseService.run(env);
 }
