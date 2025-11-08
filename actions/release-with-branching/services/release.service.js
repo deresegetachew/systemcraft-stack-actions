@@ -53,7 +53,7 @@ export class ReleaseService {
         }
 
         case 'exec': {
-          this.shell.run(step.cmd, { stdio: 'inherit' });
+          this.shell.exec(step.cmd, { stdio: 'inherit' });
           break;
         }
 

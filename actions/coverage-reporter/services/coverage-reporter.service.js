@@ -22,8 +22,8 @@ export class CoverageReporterService {
   runCoverage(coverageCommand) {
     console.log(`🧪 Running coverage command: ${coverageCommand}`);
     try {
-      const output = this.shell.run(coverageCommand, { stdio: 'pipe' });
-      return { success: true, output };
+      const result = this.shell.exec(coverageCommand, { stdio: 'pipe' });
+      return { success: true, output: result.stdout };
     } catch (error) {
       return { success: false, error: error.message };
     }
@@ -158,7 +158,7 @@ export class CoverageReporterService {
     // Copy HTML reports if they exist
     if (this.fs.existsSync('coverage')) {
       console.log('📋 Copying HTML coverage reports...');
-      this.shell.run(
+      this.shell.exec(
         `cp -r coverage ${path.join(inputs.outputDir, 'html-report')}`,
       );
     }

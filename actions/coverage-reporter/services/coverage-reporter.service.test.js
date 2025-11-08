@@ -10,16 +10,18 @@ describe('CoverageReporterService', () => {
 
   beforeEach(() => {
     mockShell = {
-      run: (cmd, options) => {
+      exec: (cmd, options) => {
         if (cmd.includes('coverage')) {
-          return `
+          return {
+            stdout: `
 All files          |   85.5 |    78.2 |   92.1 |   87.3 |
 changeset-validator|   90.0 |    85.0 |   95.0 |   88.0 |
 plan-maintenance   |   82.0 |    75.0 |   90.0 |   85.0 |
 release-branching  |   84.0 |    76.0 |   91.0 |   89.0 |
-          `;
+            `
+          };
         }
-        return 'success';
+        return { stdout: 'success' };
       },
     };
 

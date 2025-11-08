@@ -61,7 +61,7 @@ export class VersionService {
   }
 
   runChangesetVersion() {
-    this.shell.run('pnpm changeset version');
+    this.shell.exec('pnpm changeset version');
   }
 
   async run(env = process.env, baseDir = process.cwd()) {
