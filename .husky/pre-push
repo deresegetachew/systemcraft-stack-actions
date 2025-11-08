@@ -1,2 +1,2 @@
 echo "Running pre-push checks: Type check, lint, and test..."
-pnpm build && pnpm lint && pnpm test
+pnpm format && pnpm lint && pnpm test
