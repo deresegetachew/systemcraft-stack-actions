@@ -1,0 +1,19 @@
+{
+  "name": "require-changeset",
+  "private": true,
+  "version": "1.0.0",
+  "description": "A GitHub Action to enforce the presence of a changeset file on a PR.",
+  "main": "index.js",
+  "type": "module",
+  "scripts": {
+    "build": "ncc build index.js -o dist"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "@actions/core": "^1.11.1",
+    "@actions/github": "^6.0.1",
+    "@systemcraft-stack-actions/utils": "workspace:*"
+  }
+}
