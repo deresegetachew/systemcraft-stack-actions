@@ -1,0 +1,36 @@
+{
+  "name": "systemcraft-stack-actions",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "type": "module",
+  "scripts": {
+    "build": "pnpm -r --filter './actions/*' run build",
+    "typecheck": "pnpm -r --filter './actions/*' run typecheck",
+    "test": "pnpm -r --filter './actions/*' test --if-present",
+    "test-gh-scripts": "c8 --reporter=text --reporter=html node --test --import './test/setup.js' './actions/**/*.test.js'",
+    "prepare": "husky",
+    "lint": "eslint .",
+    "lint:fix": "eslint . --ext .js --fix",
+    "format": "prettier -w ."
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "packageManager": "pnpm@10.20.0+sha256.47a3352808501b8d1ef20112273b6a5dcfa53d28a55bcce36d268e878bd6bfe9",
+  "devDependencies": {
+    "@eslint/js": "^9.39.1",
+    "@types/node": "^24.9.2",
+    "husky": "^9.0.11",
+    "@vercel/ncc": "^0.38.4",
+    "c8": "^10.1.3",
+    "eslint": "^9.39.1",
+    "eslint-config-prettier": "^10.1.8",
+    "eslint-plugin-import": "^2.32.0",
+    "eslint-plugin-unused-imports": "^4.3.0",
+    "globals": "^15.8.0",
+    "prettier": "^3.6.2",
+    "tsc": "^2.0.4",
+    "typescript": "^5.9.3"
+  }
+}
