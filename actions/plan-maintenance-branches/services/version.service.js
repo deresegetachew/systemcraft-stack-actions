@@ -4,7 +4,8 @@ import {
   loadChangesetFiles,
   getPackageInfo,
   PackageUtil,
-} from '@systemcraft-stack-actions/utils'; export class VersionService {
+} from '@systemcraft-stack-actions/utils';
+export class VersionService {
   constructor(shellUtil, fsApi) {
     this.shell = shellUtil;
     this.fs = fsApi;

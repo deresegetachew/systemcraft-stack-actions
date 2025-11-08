@@ -1,5 +1,5 @@
 import * as core from '@actions/core';
-import * as github from '@actions/github';
+
 import { CoverageReporterService } from './services/coverage-reporter.service.js';
 
 export async function main() {
@@ -10,7 +10,7 @@ export async function main() {
       outputDir: core.getInput('output-dir'),
       enablePrComments: core.getBooleanInput('enable-pr-comments'),
       minimumCoverage: parseFloat(core.getInput('minimum-coverage')),
-      githubToken: core.getInput('github-token')
+      githubToken: core.getInput('github-token'),
     };
 
     const service = new CoverageReporterService();
@@ -22,7 +22,9 @@ export async function main() {
     core.setOutput('artifacts-path', result.artifactsPath);
 
     if (result.status === 'fail') {
-      core.setFailed(`Coverage ${result.coveragePercentage}% is below minimum threshold ${inputs.minimumCoverage}%`);
+      core.setFailed(
+        `Coverage ${result.coveragePercentage}% is below minimum threshold ${inputs.minimumCoverage}%`,
+      );
     }
   } catch (error) {
     core.setFailed(`Coverage reporter failed: ${error.message}`);

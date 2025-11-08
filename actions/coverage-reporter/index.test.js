@@ -10,7 +10,7 @@ const mockCore = {
       'output-dir': 'coverage-artifacts',
       'enable-pr-comments': 'true',
       'minimum-coverage': '80',
-      'github-token': 'test-token'
+      'github-token': 'test-token',
     };
     return inputs[name] || '';
   },
@@ -18,7 +18,7 @@ const mockCore = {
     return name === 'enable-pr-comments';
   },
   setOutput: () => {},
-  setFailed: () => {}
+  setFailed: () => {},
 };
 
 const mockGithub = {};
@@ -29,12 +29,16 @@ globalThis.mockActionsGithub = mockGithub;
 describe('Coverage Reporter Action', () => {
   describe('Service Export', () => {
     it('should export CoverageReporterService', async () => {
-      const { CoverageReporterService } = await import('./services/coverage-reporter.service.js');
+      const { CoverageReporterService } = await import(
+        './services/coverage-reporter.service.js'
+      );
       assert(typeof CoverageReporterService === 'function');
     });
 
     it('should allow service instantiation', async () => {
-      const { CoverageReporterService } = await import('./services/coverage-reporter.service.js');
+      const { CoverageReporterService } = await import(
+        './services/coverage-reporter.service.js'
+      );
       const service = new CoverageReporterService();
       assert(service instanceof CoverageReporterService);
     });
@@ -48,7 +52,10 @@ describe('Coverage Reporter Action', () => {
         assert(true, 'Should not throw when importing');
       } catch (error) {
         // Expected in test environment where @actions modules aren't installed
-        assert(error.message.includes('@actions/core') || error.message.includes('coverage-reporter'));
+        assert(
+          error.message.includes('@actions/core') ||
+            error.message.includes('coverage-reporter'),
+        );
       }
     });
 

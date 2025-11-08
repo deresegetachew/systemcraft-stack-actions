@@ -32,10 +32,10 @@ export class CoverageReporterService {
   parseCoverageFromOutput(output) {
     // Parse coverage from c8 or jest output
     const lines = output.split('\n');
-    
+
     // Look for c8 summary line
-    const summaryLine = lines.find(line => line.includes('All files'));
-    
+    const summaryLine = lines.find((line) => line.includes('All files'));
+
     if (summaryLine) {
       // Extract percentages from c8 output
       const percentageMatches = summaryLine.match(/(\d+\.?\d*)/g);
@@ -44,7 +44,7 @@ export class CoverageReporterService {
           statements: parseFloat(percentageMatches[0]),
           branches: parseFloat(percentageMatches[1]),
           functions: parseFloat(percentageMatches[2]),
-          lines: parseFloat(percentageMatches[3])
+          lines: parseFloat(percentageMatches[3]),
         };
       }
     }
@@ -58,7 +58,7 @@ export class CoverageReporterService {
         statements: percentage,
         branches: percentage,
         functions: percentage,
-        lines: percentage
+        lines: percentage,
       };
     }
 
@@ -66,17 +66,23 @@ export class CoverageReporterService {
       statements: 0,
       branches: 0,
       functions: 0,
-      lines: 0
+      lines: 0,
     };
   }
 
   calculateOverallCoverage(coverage) {
-    return (coverage.statements + coverage.branches + coverage.functions + coverage.lines) / 4;
+    return (
+      (coverage.statements +
+        coverage.branches +
+        coverage.functions +
+        coverage.lines) /
+      4
+    );
   }
 
   generateMarkdownReport(coverage, minimumCoverage) {
     const overallCoverage = this.calculateOverallCoverage(coverage);
-    
+
     const getStatus = (percentage) => {
       if (percentage >= 80) return '✅ Good';
       if (percentage >= 60) return '⚠️ Fair';
@@ -89,9 +95,9 @@ export class CoverageReporterService {
     };
 
     let report = `## 📊 Coverage Report\n\n`;
-    
+
     report += `### Overall Coverage: ${overallCoverage.toFixed(2)}% ${getChangeIcon(overallCoverage, minimumCoverage)}\n\n`;
-    
+
     report += `| Metric | Coverage | Status |\n`;
     report += `|--------|----------|--------|\n`;
     report += `| **Statements** | ${coverage.statements.toFixed(2)}% | ${getStatus(coverage.statements)} |\n`;
@@ -117,7 +123,7 @@ export class CoverageReporterService {
 
     // Run coverage
     const coverageResult = this.runCoverage(inputs.coverageCommand);
-    
+
     if (!coverageResult.success) {
       throw new Error(`Coverage command failed: ${coverageResult.error}`);
     }
@@ -132,7 +138,7 @@ export class CoverageReporterService {
       details: coverage,
       timestamp: new Date().toISOString(),
       minimumCoverage: inputs.minimumCoverage,
-      status: overallCoverage >= inputs.minimumCoverage ? 'pass' : 'fail'
+      status: overallCoverage >= inputs.minimumCoverage ? 'pass' : 'fail',
     };
 
     const summaryPath = path.join(inputs.outputDir, 'coverage-summary.json');
@@ -140,7 +146,10 @@ export class CoverageReporterService {
 
     // Generate markdown report for PR comments
     if (inputs.enablePrComments) {
-      const markdownReport = this.generateMarkdownReport(coverage, inputs.minimumCoverage);
+      const markdownReport = this.generateMarkdownReport(
+        coverage,
+        inputs.minimumCoverage,
+      );
       const reportPath = path.join(inputs.outputDir, 'coverage-report.md');
       this.fs.writeFileSync(reportPath, markdownReport);
       console.log(`✅ Coverage report saved to ${reportPath}`);
@@ -149,7 +158,9 @@ export class CoverageReporterService {
     // Copy HTML reports if they exist
     if (this.fs.existsSync('coverage')) {
       console.log('📋 Copying HTML coverage reports...');
-      this.shell.run(`cp -r coverage ${path.join(inputs.outputDir, 'html-report')}`);
+      this.shell.run(
+        `cp -r coverage ${path.join(inputs.outputDir, 'html-report')}`,
+      );
     }
 
     console.log('🎉 Coverage reporting completed!');
@@ -159,7 +170,7 @@ export class CoverageReporterService {
       coveragePercentage: overallCoverage.toFixed(2),
       status: summary.status,
       artifactsPath: inputs.outputDir,
-      summary
+      summary,
     };
   }
 }

@@ -95,14 +95,14 @@ jobs:
   test-and-coverage:
     runs-on: ubuntu-latest
     permissions:
-      pull-requests: write  # Required for coverage comments
+      pull-requests: write # Required for coverage comments
       contents: read
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
           node-version: '20'
-      
+
       # Validate changesets on PRs
       - uses: deresegetachew/systemcraft-stack-actions/actions/changeset-validator@main
         if: github.event_name == 'pull_request'

@@ -20,14 +20,14 @@ release-branching  |   84.0 |    76.0 |   91.0 |   89.0 |
           `;
         }
         return 'success';
-      }
+      },
     };
 
     mockFs = {
       existsSync: () => false,
       mkdirSync: () => {},
       writeFileSync: () => {},
-      readFileSync: () => '{}'
+      readFileSync: () => '{}',
     };
 
     service = new CoverageReporterService(mockShell, mockFs);
@@ -38,9 +38,9 @@ release-branching  |   84.0 |    76.0 |   91.0 |   89.0 |
       const output = `
 All files          |   85.5 |    78.2 |   92.1 |   87.3 |
       `;
-      
+
       const result = service.parseCoverageFromOutput(output);
-      
+
       assert.strictEqual(result.statements, 85.5);
       assert.strictEqual(result.branches, 78.2);
       assert.strictEqual(result.functions, 92.1);
@@ -49,7 +49,7 @@ All files          |   85.5 |    78.2 |   92.1 |   87.3 |
 
     it('should handle missing coverage data', () => {
       const result = service.parseCoverageFromOutput('no coverage data');
-      
+
       assert.strictEqual(result.statements, 0);
       assert.strictEqual(result.branches, 0);
       assert.strictEqual(result.functions, 0);
@@ -63,7 +63,7 @@ All files          |   85.5 |    78.2 |   92.1 |   87.3 |
         statements: 80,
         branches: 60,
         functions: 100,
-        lines: 90
+        lines: 90,
       };
 
       const result = service.calculateOverallCoverage(coverage);
@@ -77,11 +77,11 @@ All files          |   85.5 |    78.2 |   92.1 |   87.3 |
         statements: 85.5,
         branches: 78.2,
         functions: 92.1,
-        lines: 87.3
+        lines: 87.3,
       };
 
       const result = service.generateMarkdownReport(coverage, 80);
-      
+
       assert(result.includes('📊 Coverage Report'));
       assert(result.includes('85.50%'));
       assert(result.includes('78.20%'));
@@ -93,11 +93,11 @@ All files          |   85.5 |    78.2 |   92.1 |   87.3 |
         statements: 65,
         branches: 55,
         functions: 70,
-        lines: 60
+        lines: 60,
       };
 
       const result = service.generateMarkdownReport(coverage, 80);
-      
+
       assert(result.includes('⚠️ **Coverage is below minimum'));
       assert(result.includes('❌'));
     });
@@ -111,7 +111,7 @@ All files          |   85.5 |    78.2 |   92.1 |   87.3 |
         outputDir: 'coverage-artifacts',
         enablePrComments: true,
         minimumCoverage: 80,
-        githubToken: 'token'
+        githubToken: 'token',
       };
 
       const result = await service.run(inputs);
@@ -130,7 +130,7 @@ All files          |   85.5 |    78.2 |   92.1 |   87.3 |
         coverageCommand: 'pnpm test --coverage',
         outputDir: 'coverage-artifacts',
         enablePrComments: true,
-        minimumCoverage: 80
+        minimumCoverage: 80,
       };
 
       const result = await service.run(inputs);

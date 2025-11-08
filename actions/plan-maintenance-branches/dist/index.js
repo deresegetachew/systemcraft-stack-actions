@@ -70,7 +70,8 @@ __webpack_async_result__();
 /* harmony import */ var _systemcraft_stack_actions_utils__WEBPACK_IMPORTED_MODULE_1__ = __nccwpck_require__(463);
 
 
- class VersionService {
+
+class VersionService {
   constructor(shellUtil, fsApi) {
     this.shell = shellUtil;
     this.fs = fsApi;
