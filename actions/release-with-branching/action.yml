@@ -1,0 +1,10 @@
+name: 'Release with Branching'
+description: 'Publish packages to npm and create maintenance branches for multi-release workflows'
+inputs:
+  enable-multi-release:
+    description: 'Enable multi-release mode for handling maintenance branches'
+    required: false
+    default: 'false'
+runs:
+  using: node20
+  main: dist/index.js

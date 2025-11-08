@@ -1,12 +1,13 @@
 {
-  "name": "require-changeset",
+  "name": "changeset-validator",
   "private": true,
   "version": "1.0.0",
-  "description": "A GitHub Action to enforce the presence of a changeset file on a PR.",
+  "description": "A GitHub Action to validate that pull requests include required changeset files.",
   "main": "index.js",
   "type": "module",
   "scripts": {
-    "build": "ncc build index.js -o dist"
+    "build": "ncc build index.js -o dist",
+    "test": "node --test --import '../../../test/setup.js' ./**/*.test.js"
   },
   "keywords": [],
   "author": "",

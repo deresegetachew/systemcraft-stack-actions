@@ -48,6 +48,12 @@ importers:
         specifier: ^5.9.3
         version: 5.9.3
 
+  actions/release:
+    dependencies:
+      '@systemcraft-stack-actions/utils':
+        specifier: workspace:*
+        version: link:../../libs/utils
+
   actions/require-changeset:
     dependencies:
       '@actions/core':
@@ -56,6 +62,12 @@ importers:
       '@actions/github':
         specifier: ^6.0.1
         version: 6.0.1
+      '@systemcraft-stack-actions/utils':
+        specifier: workspace:*
+        version: link:../../libs/utils
+
+  actions/version:
+    dependencies:
       '@systemcraft-stack-actions/utils':
         specifier: workspace:*
         version: link:../../libs/utils

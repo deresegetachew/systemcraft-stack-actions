@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 
+// Import GitHub Actions modules for proper action execution
 import core from '@actions/core';
 import github from '@actions/github';
 

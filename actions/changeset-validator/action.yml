@@ -1,0 +1,15 @@
+name: 'Changeset Validator'
+description: 'Validates that pull requests include required changeset files for proper version tracking'
+inputs:
+  skip-label:
+    description: 'Label or text to skip changeset check'
+    required: false
+    default: '[skip changeset check]'
+outputs:
+  changeset-files:
+    description: 'Comma-separated list of changeset files found'
+  skipped:
+    description: 'Whether the check was skipped'
+runs:
+  using: node20
+  main: dist/index.js
