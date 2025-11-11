@@ -28488,13 +28488,18 @@ class CoverageReporterService {
 
   findBaselineCoverageFiles(extractDir) {
     const coverageFiles = [];
-    
+
     // First, try standard coverage-summary.json locations
     const possibleSummaryPaths = [
       external_node_path_namespaceObject.join(extractDir, 'coverage-summary.json'),
       external_node_path_namespaceObject.join(extractDir, 'coverage-artifacts', 'coverage-summary.json'),
       external_node_path_namespaceObject.join(extractDir, 'coverage', 'coverage-summary.json'),
-      external_node_path_namespaceObject.join(extractDir, 'coverage-artifacts', 'coverage', 'coverage-summary.json'),
+      external_node_path_namespaceObject.join(
+        extractDir,
+        'coverage-artifacts',
+        'coverage',
+        'coverage-summary.json',
+      ),
       external_node_path_namespaceObject.join(extractDir, 'dist', 'coverage-summary.json'),
       external_node_path_namespaceObject.join(extractDir, 'artifacts', 'coverage-summary.json'),
     ];
@@ -28509,7 +28514,7 @@ class CoverageReporterService {
     // If no summary found, look for package-specific coverage.json files
     try {
       const dirContents = this.fs.readdirSync(extractDir);
-      
+
       for (const item of dirContents) {
         const itemPath = external_node_path_namespaceObject.join(extractDir, item);
         if (this.fs.statSync(itemPath).isDirectory()) {
@@ -28521,7 +28526,9 @@ class CoverageReporterService {
       }
 
       if (coverageFiles.length > 0) {
-        console.log(`✅ Found ${coverageFiles.length} package-specific coverage files`);
+        console.log(
+          `✅ Found ${coverageFiles.length} package-specific coverage files`,
+        );
         return { type: 'packages', files: coverageFiles };
       }
     } catch (error) {
@@ -28560,7 +28567,9 @@ class CoverageReporterService {
     try {
       if (coverageResult.type === 'summary') {
         // Handle standard coverage-summary.json
-        const baselineData = JSON.parse(this.fs.readFileSync(coverageResult.path, 'utf8'));
+        const baselineData = JSON.parse(
+          this.fs.readFileSync(coverageResult.path, 'utf8'),
+        );
         console.log('✅ Baseline coverage loaded from summary file');
         return (
           baselineData.details ||
@@ -28580,7 +28589,7 @@ class CoverageReporterService {
 
   combinePackageCoverage(coverageFiles) {
     console.log('🔄 Combining package-specific coverage data...');
-    
+
     let totalStatements = { covered: 0, total: 0 };
     let totalBranches = { covered: 0, total: 0 };
     let totalFunctions = { covered: 0, total: 0 };
@@ -28594,30 +28603,44 @@ class CoverageReporterService {
         // Extract totals from the coverage JSON (c8/istanbul format)
         if (pkgCoverage.total) {
           const { total } = pkgCoverage;
-          
+
           totalStatements.covered += total.statements?.covered || 0;
           totalStatements.total += total.statements?.total || 0;
-          
+
           totalBranches.covered += total.branches?.covered || 0;
           totalBranches.total += total.branches?.total || 0;
-          
+
           totalFunctions.covered += total.functions?.covered || 0;
           totalFunctions.total += total.functions?.total || 0;
-          
+
           totalLines.covered += total.lines?.covered || 0;
           totalLines.total += total.lines?.total || 0;
         }
       } catch (error) {
-        console.warn(`⚠️ Failed to parse coverage for ${pkgName}: ${error.message}`);
+        console.warn(
+          `⚠️ Failed to parse coverage for ${pkgName}: ${error.message}`,
+        );
       }
     }
 
     // Calculate percentages
     const coverage = {
-      statements: totalStatements.total > 0 ? (totalStatements.covered / totalStatements.total) * 100 : 0,
-      branches: totalBranches.total > 0 ? (totalBranches.covered / totalBranches.total) * 100 : 0,
-      functions: totalFunctions.total > 0 ? (totalFunctions.covered / totalFunctions.total) * 100 : 0,
-      lines: totalLines.total > 0 ? (totalLines.covered / totalLines.total) * 100 : 0,
+      statements:
+        totalStatements.total > 0
+          ? (totalStatements.covered / totalStatements.total) * 100
+          : 0,
+      branches:
+        totalBranches.total > 0
+          ? (totalBranches.covered / totalBranches.total) * 100
+          : 0,
+      functions:
+        totalFunctions.total > 0
+          ? (totalFunctions.covered / totalFunctions.total) * 100
+          : 0,
+      lines:
+        totalLines.total > 0
+          ? (totalLines.covered / totalLines.total) * 100
+          : 0,
     };
 
     console.log('✅ Combined baseline coverage:', coverage);
