@@ -8,7 +8,7 @@ inputs:
   coverage-file:
     description: 'Path to coverage.json file'
     required: false
-    default: 'coverage/coverage.json'
+    default: 'coverage/coverage-summary.json'
   coverage-format:
     description: 'Coverage output format (lcov, json, text)'
     required: false
