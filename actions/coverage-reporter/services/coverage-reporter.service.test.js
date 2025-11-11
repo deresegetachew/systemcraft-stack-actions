@@ -238,8 +238,7 @@ All files          |   85.5 |    78.2 |   92.1 |   87.3 |
       };
       mockFs.statSync = (p) => ({
         isDirectory: () =>
-          p === 'coverage-artifacts/pkg-a' ||
-          p === 'coverage-artifacts/pkg-b',
+          p === 'coverage-artifacts/pkg-a' || p === 'coverage-artifacts/pkg-b',
       });
       mockFs.readFileSync = (p) => {
         if (p.includes('pkg-a')) {
