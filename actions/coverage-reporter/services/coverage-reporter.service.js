@@ -455,27 +455,89 @@ export class CoverageReporterService {
     return report;
   }
 
+  aggregatePackageCoverage(packageCoverage) {
+    let totalCoverage = { statements: 0, branches: 0, functions: 0, lines: 0 };
+    let totalPackages = 0;
+
+    for (const { package: pkgName, path: filePath } of packageCoverage.files) {
+      try {
+        const pkgCoverageData = JSON.parse(
+          this.fs.readFileSync(filePath, 'utf8'),
+        );
+        const pkgCoverage = this.parseCoverageFromSummary(pkgCoverageData);
+
+        totalCoverage.statements += pkgCoverage.statements;
+        totalCoverage.branches += pkgCoverage.branches;
+        totalCoverage.functions += pkgCoverage.functions;
+        totalCoverage.lines += pkgCoverage.lines;
+        totalPackages++;
+      } catch (error) {
+        console.warn(
+          `⚠️ Failed to parse current coverage for ${pkgName}: ${error.message}`,
+        );
+      }
+    }
+
+    if (totalPackages > 0) {
+      return {
+        statements: totalCoverage.statements / totalPackages,
+        branches: totalCoverage.branches / totalPackages,
+        functions: totalCoverage.functions / totalPackages,
+        lines: totalCoverage.lines / totalPackages,
+      };
+    }
+
+    return { statements: 0, branches: 0, functions: 0, lines: 0 };
+  }
+
   getCoverage(inputs) {
-    if (!inputs.coverageCommand) {
-      throw new Error(
-        'Coverage command not provided and no coverage artifacts found',
+    let coverageData = this.loadCurrentCoverage(
+      inputs.outputDir,
+      inputs.coverageFile,
+    );
+
+    if (coverageData) {
+      console.log('✅ Using coverage data from artifacts directory');
+    } else if (this.shouldLoadCoverageFromFile(inputs.coverageFile)) {
+      console.log(`📄 Loading coverage from file: ${inputs.coverageFile}`);
+      coverageData = this.readCoverageFromFile(inputs.coverageFile);
+    } else {
+      if (!inputs.coverageCommand) {
+        throw new Error(
+          'Coverage command not provided and no coverage artifacts found',
+        );
+      }
+      console.log('🧪 No existing coverage found, running coverage command...');
+      const coverageResult = this.runCoverage(inputs.coverageCommand);
+      if (!coverageResult.success) {
+        throw new Error(`Coverage command failed: ${coverageResult.error}`);
+      }
+
+      // After running command, try to load again
+      const generatedCoverage = this.loadCurrentCoverage(
+        inputs.outputDir,
+        inputs.coverageFile,
       );
+      if (generatedCoverage) {
+        coverageData = generatedCoverage;
+        console.log('✅ Using coverage data generated in artifacts directory');
+      } else if (this.shouldLoadCoverageFromFile(inputs.coverageFile)) {
+        console.log(
+          `📄 Loading coverage from generated file: ${inputs.coverageFile}`,
+        );
+        coverageData = this.readCoverageFromFile(inputs.coverageFile);
+      } else {
+        console.log('📄 Parsing coverage from command output...');
+        coverageData = this.parseCoverageFromOutput(coverageResult.output);
+      }
     }
 
-    console.log('🧪 No existing coverage found, running coverage command...');
-    const coverageResult = this.runCoverage(inputs.coverageCommand);
-
-    if (!coverageResult.success) {
-      throw new Error(`Coverage command failed: ${coverageResult.error}`);
+    if (coverageData && coverageData.type === 'packages') {
+      console.log('📦 Aggregating package coverage...');
+      return this.aggregatePackageCoverage(coverageData);
     }
 
-    // After running coverage, try to read the generated coverage file
-    if (this.shouldLoadCoverageFromFile(inputs.coverageFile)) {
-      console.log(
-        `📄 Loading coverage from generated file: ${inputs.coverageFile}`,
-      );
-      return this.readCoverageFromFile(inputs.coverageFile);
-    }
+    return coverageData;
   }
 
   loadCurrentCoverage(outputDir, coverageFile) {
