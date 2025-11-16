@@ -662,10 +662,7 @@ function getActionInput(name, env = process.env) {
     throw new Error('Input name is required');
   }
 
-  const normalizedName = name
-    .trim()
-    .replace(/[\s-]+/g, '_')
-    .toUpperCase();
+  const normalizedName = name.trim().replace(/\s+/g, '_').toUpperCase();
   const key = `INPUT_${normalizedName}`;
 
   console.log('key', key);
