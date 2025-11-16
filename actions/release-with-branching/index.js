@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 
 import fs from 'node:fs';
+import path from 'node:path';
 
 import { ShellUtil } from '../../libs/utils/index.js';
 
@@ -11,8 +12,9 @@ export async function main(
   env = process.env,
   fsApi = fs,
   shellUtil = new ShellUtil(),
+  pathApi = path,
 ) {
-  const releaseService = ReleaseService.create(shellUtil, fsApi);
+  const releaseService = ReleaseService.create(shellUtil, fsApi, pathApi);
   return await releaseService.run(env);
 }
 

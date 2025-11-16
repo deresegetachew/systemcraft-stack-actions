@@ -10,6 +10,7 @@ describe('ReleaseService', () => {
   let mockGitService;
   let releaseService;
   let originalEnv;
+  let mockPathApi;
 
   beforeEach(() => {
     originalEnv = { ...process.env };
@@ -20,6 +21,10 @@ describe('ReleaseService', () => {
       existsSync: mock.fn(() => false),
       readdirSync: mock.fn(() => []),
       readFileSync: mock.fn(() => ''),
+      resolve: mock.fn(() => planFilePath),
+    };
+
+    mockPathApi = {
       resolve: mock.fn(() => planFilePath),
     };
 
@@ -38,7 +43,11 @@ describe('ReleaseService', () => {
     };
 
     // Create release service with mocked dependencies
-    releaseService = ReleaseService.create(mockShellService, mockFsApi);
+    releaseService = ReleaseService.create(
+      mockShellService,
+      mockFsApi,
+      mockPathApi,
+    );
     // Override git service with mock
     releaseService.git = mockGitService;
   });

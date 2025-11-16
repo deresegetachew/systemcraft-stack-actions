@@ -1,21 +1,24 @@
+import path from 'node:path';
+
 import { GitUtil } from '@systemcraft-stack-actions/utils';
 
 export class ReleaseService {
-  constructor(gitService, shellService, fsApi) {
+  constructor(gitService, shellService, fsApi, pathApi) {
     this.git = gitService;
     this.shell = shellService;
     this.fs = fsApi;
+    this.path = pathApi || path;
   }
 
-  static create(shell, fsApi) {
+  static create(shell, fsApi, pathApi = path) {
     const gitService = new GitUtil(shell);
-    return new ReleaseService(gitService, shell, fsApi);
+    return new ReleaseService(gitService, shell, fsApi, pathApi);
   }
 
   planRelease(ctx) {
     const { isMultiRelease, isMainBranch } = ctx;
     const steps = [];
-    const planFilePath = this.fs.resolve(
+    const planFilePath = this.path.resolve(
       process.cwd(),
       '.release-meta',
       'maintenance-branches.json',

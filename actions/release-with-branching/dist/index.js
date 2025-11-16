@@ -9,6 +9,13 @@ module.exports = __WEBPACK_EXTERNAL_createRequire(import.meta.url)("node:fs");
 
 /***/ }),
 
+/***/ 760:
+/***/ ((module) => {
+
+module.exports = __WEBPACK_EXTERNAL_createRequire(import.meta.url)("node:path");
+
+/***/ }),
+
 /***/ 347:
 /***/ ((__webpack_module__, __webpack_exports__, __nccwpck_require__) => {
 
@@ -17,8 +24,10 @@ __nccwpck_require__.a(__webpack_module__, async (__webpack_handle_async_dependen
 /* harmony export */   i: () => (/* binding */ main)
 /* harmony export */ });
 /* harmony import */ var node_fs__WEBPACK_IMPORTED_MODULE_0__ = __nccwpck_require__(24);
-/* harmony import */ var _libs_utils_index_js__WEBPACK_IMPORTED_MODULE_1__ = __nccwpck_require__(418);
-/* harmony import */ var _services_release_service_js__WEBPACK_IMPORTED_MODULE_2__ = __nccwpck_require__(912);
+/* harmony import */ var node_path__WEBPACK_IMPORTED_MODULE_1__ = __nccwpck_require__(760);
+/* harmony import */ var _libs_utils_index_js__WEBPACK_IMPORTED_MODULE_2__ = __nccwpck_require__(36);
+/* harmony import */ var _services_release_service_js__WEBPACK_IMPORTED_MODULE_3__ = __nccwpck_require__(912);
+
 
 
 
@@ -30,9 +39,10 @@ __nccwpck_require__.a(__webpack_module__, async (__webpack_handle_async_dependen
 async function main(
   env = process.env,
   fsApi = node_fs__WEBPACK_IMPORTED_MODULE_0__,
-  shellUtil = new _libs_utils_index_js__WEBPACK_IMPORTED_MODULE_1__/* .ShellUtil */ .Rs(),
+  shellUtil = new _libs_utils_index_js__WEBPACK_IMPORTED_MODULE_2__/* .ShellUtil */ .Rs(),
+  pathApi = node_path__WEBPACK_IMPORTED_MODULE_1__,
 ) {
-  const releaseService = _services_release_service_js__WEBPACK_IMPORTED_MODULE_2__/* .ReleaseService */ .p.create(shellUtil, fsApi);
+  const releaseService = _services_release_service_js__WEBPACK_IMPORTED_MODULE_3__/* .ReleaseService */ .p.create(shellUtil, fsApi, pathApi);
   return await releaseService.run(env);
 }
 
@@ -62,25 +72,29 @@ __webpack_async_result__();
 /* harmony export */ __nccwpck_require__.d(__webpack_exports__, {
 /* harmony export */   p: () => (/* binding */ ReleaseService)
 /* harmony export */ });
-/* harmony import */ var _systemcraft_stack_actions_utils__WEBPACK_IMPORTED_MODULE_0__ = __nccwpck_require__(418);
+/* harmony import */ var node_path__WEBPACK_IMPORTED_MODULE_0__ = __nccwpck_require__(760);
+/* harmony import */ var _systemcraft_stack_actions_utils__WEBPACK_IMPORTED_MODULE_1__ = __nccwpck_require__(36);
+
+
 
 
 class ReleaseService {
-  constructor(gitService, shellService, fsApi) {
+  constructor(gitService, shellService, fsApi, pathApi) {
     this.git = gitService;
     this.shell = shellService;
     this.fs = fsApi;
+    this.path = pathApi || node_path__WEBPACK_IMPORTED_MODULE_0__;
   }
 
-  static create(shell, fsApi) {
-    const gitService = new _systemcraft_stack_actions_utils__WEBPACK_IMPORTED_MODULE_0__/* .GitUtil */ .Hc(shell);
-    return new ReleaseService(gitService, shell, fsApi);
+  static create(shell, fsApi, pathApi = node_path__WEBPACK_IMPORTED_MODULE_0__) {
+    const gitService = new _systemcraft_stack_actions_utils__WEBPACK_IMPORTED_MODULE_1__/* .GitUtil */ .Hc(shell);
+    return new ReleaseService(gitService, shell, fsApi, pathApi);
   }
 
   planRelease(ctx) {
     const { isMultiRelease, isMainBranch } = ctx;
     const steps = [];
-    const planFilePath = this.fs.resolve(
+    const planFilePath = this.path.resolve(
       process.cwd(),
       '.release-meta',
       'maintenance-branches.json',
@@ -222,7 +236,7 @@ class ReleaseService {
 
 /***/ }),
 
-/***/ 418:
+/***/ 36:
 /***/ ((__unused_webpack___webpack_module__, __webpack_exports__, __nccwpck_require__) => {
 
 
@@ -236,8 +250,8 @@ __nccwpck_require__.d(__webpack_exports__, {
 
 // EXTERNAL MODULE: external "node:fs"
 var external_node_fs_ = __nccwpck_require__(24);
-;// CONCATENATED MODULE: external "node:path"
-const external_node_path_namespaceObject = __WEBPACK_EXTERNAL_createRequire(import.meta.url)("node:path");
+// EXTERNAL MODULE: external "node:path"
+var external_node_path_ = __nccwpck_require__(760);
 ;// CONCATENATED MODULE: ../../libs/utils/fs/fs.util.js
 
 
