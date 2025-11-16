@@ -1,2 +1,14 @@
-echo "Running pre-push checks: Type check, lint, and test..."
-pnpm format && pnpm lint
+#!/bin/sh
+. "$(dirname "$0")/_/husky.sh"
+
+echo "Running pre-commit build..."
+pnpm build || exit 1
+
+echo "Staging action dist outputs..."
+git add actions/*/dist
+
+echo "Formatting and linting..."
+pnpm format && pnpm lint || exit 1
+
+echo "Staging formatted files..."
+git add -u
