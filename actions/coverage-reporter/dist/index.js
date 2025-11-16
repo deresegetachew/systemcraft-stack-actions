@@ -29088,8 +29088,8 @@ const DEFAULTS = {
 
 async function main() {
   try {
-
-    console.log(`env variables`, { envVars: process.env })
+    console.log(`env variables`, { envVars: process.env });
+    console.log(`githubToken : ${getActionInput('github-token')}`)
 
     const inputs = {
       coverageCommand:
@@ -29108,7 +29108,7 @@ async function main() {
         return Number.isNaN(parsed) ? DEFAULTS.minimumCoverage : parsed;
       })(),
       githubToken:
-        getActionInput('github-token') || process.env.GITHUB_TOKEN || '',
+        getActionInput('github-token'),
       enableDiff: getBooleanActionInput('enable-diff') ?? DEFAULTS.enableDiff,
       baselineArtifactName:
         getActionInput('baseline-artifact-name') ||
