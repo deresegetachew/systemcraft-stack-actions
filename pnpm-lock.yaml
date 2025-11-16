@@ -48,7 +48,7 @@ importers:
         specifier: ^5.9.3
         version: 5.9.3
 
-  actions/require-changeset:
+  actions/changeset-validator:
     dependencies:
       '@actions/core':
         specifier: ^1.11.1
@@ -56,6 +56,30 @@ importers:
       '@actions/github':
         specifier: ^6.0.1
         version: 6.0.1
+      '@systemcraft-stack-actions/utils':
+        specifier: workspace:*
+        version: link:../../libs/utils
+
+  actions/coverage-reporter:
+    dependencies:
+      '@actions/core':
+        specifier: ^1.11.1
+        version: 1.11.1
+      '@actions/github':
+        specifier: ^6.0.1
+        version: 6.0.1
+      '@systemcraft-stack-actions/utils':
+        specifier: workspace:*
+        version: link:../../libs/utils
+
+  actions/plan-maintenance-branches:
+    dependencies:
+      '@systemcraft-stack-actions/utils':
+        specifier: workspace:*
+        version: link:../../libs/utils
+
+  actions/release-with-branching:
+    dependencies:
       '@systemcraft-stack-actions/utils':
         specifier: workspace:*
         version: link:../../libs/utils

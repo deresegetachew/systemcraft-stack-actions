@@ -63,7 +63,7 @@ export class FSUtil {
    *
    * @example
    * const exists = await fsUtil.exists('/path/to/file.txt');
-   * if (exists) console.log('File exists');
+   * if (exists) console.debug('File exists');
    */
   async exists(path) {
     try {

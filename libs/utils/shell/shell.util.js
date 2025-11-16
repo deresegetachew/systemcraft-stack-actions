@@ -10,7 +10,7 @@ import process from 'node:process';
  * @example
  * const shell = new ShellUtil();
  * const result = shell.exec('git status');
- * console.log(result.stdout);
+ * console.debug(result.stdout);
  */
 export class ShellUtil {
   /**
@@ -56,13 +56,13 @@ export class ShellUtil {
    * // Handle errors when capturing output
    * try {
    *   const result = shell.exec('git diff --name-only', { stdio: 'pipe' });
-   *   console.log('Changed files:', result.stdout);
+   *   console.debug('Changed files:', result.stdout);
    * } catch (error) {
-   *   console.log('No changes or git error');
+   *   console.debug('No changes or git error');
    * }
    */
   exec(command, options = {}) {
-    console.log(`> ${command}`);
+    console.debug(`> ${command}`);
     try {
       const output = this.cp.execSync(command, {
         stdio: 'inherit',
@@ -70,6 +70,8 @@ export class ShellUtil {
       });
 
       if (output === null || output === undefined) return { stdout: '' };
+
+      console.debug('---->', { stdout: output.toString() });
       return { stdout: output.toString() };
     } catch (e) {
       console.error(`❌ Command failed: ${command}`);

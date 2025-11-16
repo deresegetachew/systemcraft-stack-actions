@@ -9,8 +9,8 @@ describe('FsUtil', () => {
 
   beforeEach(() => {
     mockFs = {
-      mkdir: async () => { },
-      access: async () => { },
+      mkdir: async () => {},
+      access: async () => {},
       readFile: async () => '{"name": "test-package"}',
     };
     fsUtil = new FSUtil(mockFs);
@@ -34,7 +34,7 @@ describe('FsUtil', () => {
 
   describe('exists()', () => {
     it('should return true if path exists', async () => {
-      mockFs.access = async () => { }; // No error means file exists
+      mockFs.access = async () => {}; // No error means file exists
 
       const result = await fsUtil.exists('/test/path');
 

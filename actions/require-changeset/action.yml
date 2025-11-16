@@ -1,5 +1,0 @@
-name: 'SystemCraft Require Changeset'
-description: 'validates changes and requires changeset files if needed'
-runs:
-  using: node20
-  main: dist/index.js

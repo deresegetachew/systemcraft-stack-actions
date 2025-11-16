@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 
+// Import GitHub Actions modules for proper action execution
 import core from '@actions/core';
 import github from '@actions/github';
 
@@ -13,9 +14,9 @@ async function main() {
       '[skip changeset check]';
     const context = github.context;
 
-    console.log(`Event type: ${context.eventName}`);
-    console.log(`PR title: ${context.payload.pull_request?.title || 'N/A'}`);
-    console.log(`Actor: ${context.actor}`);
+    console.debug(`Event type: ${context.eventName}`);
+    console.debug(`PR title: ${context.payload.pull_request?.title || 'N/A'}`);
+    console.debug(`Actor: ${context.actor}`);
 
     // Use service for validation
     const service = new ChangesetRequirementService();
@@ -29,21 +30,21 @@ async function main() {
     }
 
     if (result.shouldSkip) {
-      console.log(`ℹ️ ${result.skipReason}`);
+      console.debug(`ℹ️ ${result.skipReason}`);
       core.setOutput('skipped', 'true');
       return;
     }
 
     if (!result.hasChangeset) {
       const errorMessage = service.generateErrorMessage();
-      console.log(errorMessage);
+      console.debug(errorMessage);
       core.setFailed('No changeset found for this PR');
       return;
     }
 
-    console.log('');
-    console.log('✅ Changeset found:');
-    console.log(result.changesetFiles.join('\n'));
+    console.debug('');
+    console.debug('✅ Changeset found:');
+    console.debug(result.changesetFiles.join('\n'));
     core.setOutput('changeset-files', result.changesetFiles.join(','));
   } catch (error) {
     console.error('❌ Action failed:', error.message);

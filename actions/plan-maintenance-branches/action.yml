@@ -1,0 +1,5 @@
+name: 'Plan Maintenance Branches'
+description: 'Analyze changesets for major version bumps and plan maintenance branches'
+runs:
+  using: node20
+  main: dist/index.js

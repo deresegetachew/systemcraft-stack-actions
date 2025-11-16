@@ -12,21 +12,21 @@ export class GitUtil {
 
     for (const command of strategies) {
       try {
-        console.log(`Trying: ${command}`);
+        console.debug(`Trying: ${command}`);
         const result = this.shell.exec(command, { stdio: 'pipe' });
         const files = result.stdout.split('\n').filter(Boolean);
 
-        console.log(`result.stdout:\n${result.stdout}`);
-        console.log(`Files changed:\n${files.join('\n')}`);
+        console.debug(`result.stdout:\n${result.stdout}`);
+        console.debug(`Files changed:\n${files.join('\n')}`);
 
         if (files.length > 0) {
-          console.log(
+          console.debug(
             `✅ Found ${files.length} changed files using: ${command}`,
           );
           return files;
         }
       } catch (error) {
-        console.log(`❌ Failed: ${command} - ${error.message}`);
+        console.debug(`❌ Failed: ${command} - ${error.message}`);
       }
     }
 
@@ -43,11 +43,11 @@ export class GitUtil {
   }
 
   createBranch(branchName, fromCommit = 'HEAD~1') {
-    this.shell.run(`git branch ${branchName} ${fromCommit}`);
+    this.shell.exec(`git branch ${branchName} ${fromCommit}`);
   }
 
   pushBranch(branchName) {
-    this.shell.run(`git push origin ${branchName}`);
+    this.shell.exec(`git push origin ${branchName}`);
   }
 
   getChangedFilesBetweenRefs(baseRef, headRef, baseSha, headSha) {
@@ -109,11 +109,11 @@ export class GitUtil {
     ];
 
     for (let i = 0; i < strategies.length; i++) {
-      console.log(`Trying diff strategy ${i + 1}...`);
-      const result = strategies;
+      console.debug(`Trying diff strategy ${i + 1}...`);
+      const result = strategies[i]();
       if (result && result.trim()) {
         const files = result.trim().split('\n').filter(Boolean);
-        console.log(
+        console.debug(
           `✅ Successfully got ${files.length} changed files using strategy ${i + 1}`,
         );
         return files;
@@ -135,7 +135,14 @@ export class GitUtil {
     const headers = this.#buildRequestHeaders();
 
     // list artifacts
-    const listReqURL = this.#buildRequestURI('list', { owner, repoName });
+    const listReqURL = this.#buildRequestURI('list', {
+      owner,
+      repoName,
+      artifactName,
+    });
+
+    console.debug(`Fetching artifacts from ${listReqURL}`);
+
     const listResponse = await fetch(listReqURL, { headers });
 
     if (!listResponse.ok) {
@@ -147,6 +154,8 @@ export class GitUtil {
 
     const listData = await listResponse.json();
     const artifact = this.#findLatestArtifact(listData.artifacts);
+
+    console.debug(`Latest Artifact iD: ${artifact.id}`);
 
     // download artifact
     const downloadURL = this.#buildRequestURI('download', {
@@ -219,6 +228,8 @@ export class GitUtil {
   }
 
   #buildRequestHeaders() {
+    console.debug(`token: ${this.githubToken}`);
+
     return {
       Authorization: `Bearer ${this.githubToken}`,
       'User-Agent': 'coverage-collector-script',
@@ -228,10 +239,12 @@ export class GitUtil {
   }
 
   #buildRequestURI(type, options) {
+    const apiUrl = process.env.GITHUB_API_URL || 'https://api.github.com';
+
     switch (type) {
       case 'list': {
         const url = new URL(
-          `https://api.github.com/repos/${options.owner}/${options.repoName}/actions/artifacts`,
+          `${apiUrl}/repos/${options.owner}/${options.repoName}/actions/artifacts`,
         );
         url.searchParams.set('name', options.artifactName);
         url.searchParams.set('per_page', '100');
@@ -240,7 +253,7 @@ export class GitUtil {
       }
       case 'download': {
         return new URL(
-          `https://api.github.com/repos/${options.owner}/${options.repoName}/actions/artifacts/${options.artifactID}/zip`,
+          `${apiUrl}/repos/${options.owner}/${options.repoName}/actions/artifacts/${options.artifactID}/zip`,
         );
       }
       default:
