@@ -31,7 +31,7 @@ export class CoverageReporterService {
       process.env.GITHUB_TOKEN ||
       this.git.githubToken;
 
-    const baselineCoverage = await this.downloadBaseline(normalizedInputs);
+    const baselineCoverage = await this.getBaselineCoverage(normalizedInputs);
     const coverage = this.getCurrentCoverage(normalizedInputs);
 
     console.log(`Baseline data:, ${JSON.stringify(baselineCoverage, null, 2)}`);
@@ -575,7 +575,8 @@ export class CoverageReporterService {
 
     if (coverageData && coverageData.type === 'packages') {
       console.log('📦 Aggregating package coverage...');
-      return this.aggregatePackageCoverage(coverageData);
+      return this.combinePackageCoverage(coverageData);
+      // return this.aggregatePackageCoverage(coverageData);
     }
 
     return coverageData;
@@ -820,7 +821,7 @@ export class CoverageReporterService {
     this.fs.rmSync(this.tempDir, { recursive: true, force: true });
   }
 
-  async downloadBaseline(inputs) {
+  async getBaselineCoverage(inputs) {
     if (!this.shouldDownloadBaseline(inputs)) {
       return null;
     }

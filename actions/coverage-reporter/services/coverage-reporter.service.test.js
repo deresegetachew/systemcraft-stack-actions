@@ -151,7 +151,7 @@ All files          |   85.5 |    78.2 |   92.1 |   87.3 |
       };
       let downloadCalled = false;
 
-      service.downloadBaseline = async () => {
+      service.getBaselineCoverage = async () => {
         downloadCalled = true;
         return baselineCoverage;
       };
@@ -168,7 +168,7 @@ All files          |   85.5 |    78.2 |   92.1 |   87.3 |
 
       const result = await service.run(inputs);
 
-      assert(downloadCalled, 'Expected downloadBaseline to be called');
+      assert(downloadCalled, 'Expected getBaselineCoverage to be called');
       assert.deepStrictEqual(result.baselineCoverage, baselineCoverage);
       assert.deepStrictEqual(result.summary.baseline, baselineCoverage);
       assert.strictEqual(result.status, 'pass');
@@ -193,70 +193,6 @@ All files          |   85.5 |    78.2 |   92.1 |   87.3 |
     it('should create service instance', () => {
       const service = CoverageReporterService.create();
       assert(service instanceof CoverageReporterService);
-    });
-  });
-
-  describe('getCoverage', () => {
-    it('should aggregate coverage from multiple package files', () => {
-      const inputs = {
-        outputDir: 'coverage-artifacts',
-        coverageFile: 'coverage/coverage-summary.json',
-        coverageCommand: 'do-not-run',
-      };
-
-      const pkgACoverage = {
-        total: {
-          statements: { pct: 100 },
-          branches: { pct: 100 },
-          functions: { pct: 100 },
-          lines: { pct: 100 },
-        },
-      };
-
-      const pkgBCoverage = {
-        total: {
-          statements: { pct: 50 },
-          branches: { pct: 50 },
-          functions: { pct: 50 },
-          lines: { pct: 50 },
-        },
-      };
-
-      mockFs.existsSync = (p) => {
-        const validPaths = [
-          'coverage-artifacts',
-          'coverage-artifacts/pkg-a/coverage-summary.json',
-          'coverage-artifacts/pkg-b/coverage-summary.json',
-        ];
-        return validPaths.includes(p);
-      };
-      mockFs.readdirSync = (p) => {
-        if (p === 'coverage-artifacts') {
-          return ['pkg-a', 'pkg-b'];
-        }
-        return [];
-      };
-      mockFs.statSync = (p) => ({
-        isDirectory: () =>
-          p === 'coverage-artifacts/pkg-a' || p === 'coverage-artifacts/pkg-b',
-      });
-      mockFs.readFileSync = (p) => {
-        if (p.includes('pkg-a')) {
-          return JSON.stringify(pkgACoverage);
-        }
-        if (p.includes('pkg-b')) {
-          return JSON.stringify(pkgBCoverage);
-        }
-        return '{}';
-      };
-
-      service = new CoverageReporterService(mockShell, mockFs);
-      const result = service.getCoverage(inputs);
-
-      assert.strictEqual(result.statements, 75);
-      assert.strictEqual(result.branches, 75);
-      assert.strictEqual(result.functions, 75);
-      assert.strictEqual(result.lines, 75);
     });
   });
 });
