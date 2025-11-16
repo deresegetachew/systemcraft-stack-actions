@@ -13,7 +13,7 @@ export class ChangesetRequirementService {
 
     // Skip if not a pull request
     if (eventName !== 'pull_request') {
-      console.log('ℹ️ Not a pull request, skipping changeset check.');
+      console.debug('ℹ️ Not a pull request, skipping changeset check.');
       return true;
     }
 
@@ -27,7 +27,7 @@ export class ChangesetRequirementService {
       actor === 'github-actions[bot]' ||
       headRef.startsWith('changeset-release/')
     ) {
-      console.log(
+      console.debug(
         'ℹ️ Release PR, dependabot, or bot PR detected, skipping changeset check.',
       );
       return true;
@@ -35,7 +35,7 @@ export class ChangesetRequirementService {
 
     // Skip for dependabot PRs
     if (actor === 'dependabot[bot]' || headRef.startsWith('dependabot/')) {
-      console.log('ℹ️ Dependabot PR detected, skipping changeset check.');
+      console.debug('ℹ️ Dependabot PR detected, skipping changeset check.');
       return true;
     }
 
@@ -47,7 +47,7 @@ export class ChangesetRequirementService {
     );
 
     if (hasSkipLabelInText || hasSkipLabelInLabels) {
-      console.log(
+      console.debug(
         'ℹ️ Skip label detected in PR title, body or labels, skipping changeset check.',
       );
       return true;
@@ -57,7 +57,7 @@ export class ChangesetRequirementService {
   }
 
   async fetchBranches(baseRef, headRef) {
-    console.log(`🔄 Fetching branches...`);
+    console.debug(`🔄 Fetching branches...`);
 
     await this.gitUtil.fetchBranch(baseRef);
     if (headRef) {
@@ -66,14 +66,14 @@ export class ChangesetRequirementService {
   }
 
   getChangedFiles(baseRef, headRef, baseSha, headSha) {
-    console.log('🔍 Setting up git references for PR context...');
-    console.log(`Head ref: ${headRef}`);
-    console.log(`Base ref: ${baseRef}`);
-    console.log(`Comparing ${baseSha} (base) to ${headSha} (head)`);
+    console.debug('🔍 Setting up git references for PR context...');
+    console.debug(`Head ref: ${headRef}`);
+    console.debug(`Base ref: ${baseRef}`);
+    console.debug(`Comparing ${baseSha} (base) to ${headSha} (head)`);
 
-    console.log('');
-    console.log('🔍 Checking for changesets in this PR...');
-    console.log('Changed files in this PR:');
+    console.debug('');
+    console.debug('🔍 Checking for changesets in this PR...');
+    console.debug('Changed files in this PR:');
 
     const changedFiles = this.gitUtil.getChangedFilesBetweenRefs(
       baseRef,
@@ -81,7 +81,7 @@ export class ChangesetRequirementService {
       baseSha,
       headSha,
     );
-    console.log(changedFiles.join('\n'));
+    console.debug(changedFiles.join('\n'));
 
     return changedFiles;
   }

@@ -17,11 +17,11 @@ export class CoverageReporterService {
   }
 
   async run(inputs) {
-    console.log('🚀 Starting coverage reporting...');
+    console.debug('🚀 Starting coverage reporting...');
 
     const normalizedInputs = this.normalizeInputs(inputs);
 
-    console.log('Normalized inputs', normalizedInputs);
+    console.debug('Normalized inputs', normalizedInputs);
 
     this.ensureDirectory(normalizedInputs.outputDir);
 
@@ -34,8 +34,10 @@ export class CoverageReporterService {
     const baselineCoverage = await this.getBaselineCoverage(normalizedInputs);
     const coverage = this.getCurrentCoverage(normalizedInputs);
 
-    console.log(`Baseline data:, ${JSON.stringify(baselineCoverage, null, 2)}`);
-    console.log(`Coverage data: ${JSON.stringify(coverage, null, 2)}`);
+    console.debug(
+      `Baseline data:, ${JSON.stringify(baselineCoverage, null, 2)}`,
+    );
+    console.debug(`Coverage data: ${JSON.stringify(coverage, null, 2)}`);
 
     const summary = this.createSummary(
       coverage,
@@ -196,7 +198,7 @@ export class CoverageReporterService {
     );
     const reportPath = path.join(inputs.outputDir, 'coverage-report.md');
     this.fs.writeFileSync(reportPath, markdownReport);
-    console.log(`✅ Coverage report saved to ${reportPath}`);
+    console.debug(`✅ Coverage report saved to ${reportPath}`);
   }
 
   copyHtmlReports(outputDir) {
@@ -204,16 +206,16 @@ export class CoverageReporterService {
       return;
     }
 
-    console.log('📋 Copying HTML coverage reports...');
+    console.debug('📋 Copying HTML coverage reports...');
     this.shell.exec(`cp -r coverage ${path.join(outputDir, 'html-report')}`);
   }
 
   logFinalStats(summary, baselineCoverage) {
-    console.log('🎉 Coverage reporting completed!');
-    console.log(`📊 Overall coverage: ${summary.overall.toFixed(2)}%`);
+    console.debug('🎉 Coverage reporting completed!');
+    console.debug(`📊 Overall coverage: ${summary.overall.toFixed(2)}%`);
 
     if (summary.type === 'packages') {
-      console.log(`📦 Package breakdown:`);
+      console.debug(`📦 Package breakdown:`);
       for (const pkg of summary.packages) {
         const overallCoverage = this.calculateOverallCoverage(pkg.coverage);
         const baselineOverall = pkg.baseline
@@ -223,11 +225,11 @@ export class CoverageReporterService {
         if (baselineOverall !== null) {
           const diff = overallCoverage - baselineOverall;
           const diffIcon = diff > 0 ? '⬆️' : diff < 0 ? '⬇️' : '➡️';
-          console.log(
+          console.debug(
             `  📋 ${pkg.package}: ${overallCoverage.toFixed(2)}% (${diff > 0 ? '+' : ''}${diff.toFixed(2)}% ${diffIcon})`,
           );
         } else {
-          console.log(`  📋 ${pkg.package}: ${overallCoverage.toFixed(2)}%`);
+          console.debug(`  📋 ${pkg.package}: ${overallCoverage.toFixed(2)}%`);
         }
       }
       return;
@@ -240,13 +242,13 @@ export class CoverageReporterService {
     const baselineOverall = this.calculateOverallCoverage(baselineCoverage);
     const diff = summary.overall - baselineOverall;
     const diffIcon = diff > 0 ? '⬆️' : diff < 0 ? '⬇️' : '➡️';
-    console.log(
+    console.debug(
       `📈 Coverage change: ${diff > 0 ? '+' : ''}${diff.toFixed(2)}% ${diffIcon}`,
     );
   }
 
   runCoverage(coverageCommand) {
-    console.log(`🧪 Running coverage command: ${coverageCommand}`);
+    console.debug(`🧪 Running coverage command: ${coverageCommand}`);
     try {
       const result = this.shell.exec(coverageCommand, { stdio: 'pipe' });
       return { success: true, output: result.stdout };
@@ -297,7 +299,7 @@ export class CoverageReporterService {
   }
 
   parseCoverageFromSummary(summary) {
-    console.log(`parsing summary coverage ${{ summary }}`);
+    console.debug(`parsing summary coverage ${{ summary }}`);
     const { total } = summary;
     return {
       statements: total.statements.pct,
@@ -538,9 +540,9 @@ export class CoverageReporterService {
     );
 
     if (coverageData) {
-      console.log('✅ Using coverage data from artifacts directory');
+      console.debug('✅ Using coverage data from artifacts directory');
     } else if (this.shouldLoadCoverageFromFile(inputs.coverageFile)) {
-      console.log(`📄 Loading coverage from file: ${inputs.coverageFile}`);
+      console.debug(`📄 Loading coverage from file: ${inputs.coverageFile}`);
       coverageData = this.readCoverageFromFile(inputs.coverageFile);
     } else {
       if (!inputs.coverageCommand) {
@@ -548,7 +550,9 @@ export class CoverageReporterService {
           'Coverage command not provided and no coverage artifacts found',
         );
       }
-      console.log('🧪 No existing coverage found, running coverage command...');
+      console.debug(
+        '🧪 No existing coverage found, running coverage command...',
+      );
       const coverageResult = this.runCoverage(inputs.coverageCommand);
       if (!coverageResult.success) {
         throw new Error(`Coverage command failed: ${coverageResult.error}`);
@@ -561,20 +565,22 @@ export class CoverageReporterService {
       );
       if (generatedCoverage) {
         coverageData = generatedCoverage;
-        console.log('✅ Using coverage data generated in artifacts directory');
+        console.debug(
+          '✅ Using coverage data generated in artifacts directory',
+        );
       } else if (this.shouldLoadCoverageFromFile(inputs.coverageFile)) {
-        console.log(
+        console.debug(
           `📄 Loading coverage from generated file: ${inputs.coverageFile}`,
         );
         coverageData = this.readCoverageFromFile(inputs.coverageFile);
       } else {
-        console.log('📄 Parsing coverage from command output...');
+        console.debug('📄 Parsing coverage from command output...');
         coverageData = this.parseCoverageFromOutput(coverageResult.output);
       }
     }
 
     if (coverageData && coverageData.type === 'packages') {
-      console.log('📦 Aggregating package coverage...');
+      console.debug('📦 Aggregating package coverage...');
       return this.combinePackageCoverage(coverageData);
       // return this.aggregatePackageCoverage(coverageData);
     }
@@ -608,7 +614,7 @@ export class CoverageReporterService {
       }
 
       if (packagesWithCoverage.length > 0) {
-        console.log(
+        console.debug(
           `📦 Found ${packagesWithCoverage.length} current coverage packages`,
         );
         return { type: 'packages', files: packagesWithCoverage };
@@ -617,7 +623,7 @@ export class CoverageReporterService {
       // Fallback: try to read from coverage file in output directory
       const summaryPath = path.join(outputDir, path.basename(coverageFile));
       if (this.fs.existsSync(summaryPath)) {
-        console.log(
+        console.debug(
           `📊 Using ${path.basename(coverageFile)} from output directory`,
         );
         return this.readCoverageFromFile(summaryPath);
@@ -631,7 +637,7 @@ export class CoverageReporterService {
 
   shouldDownloadBaseline(inputs) {
     if (!inputs.enableDiff || !inputs.baselineArtifactName) {
-      console.log(
+      console.debug(
         '📊 Baseline comparison disabled or no artifact name provided',
       );
       return false;
@@ -712,7 +718,7 @@ export class CoverageReporterService {
 
     for (const summaryPath of possibleSummaryPaths) {
       if (this.fs.existsSync(summaryPath)) {
-        console.log(`✅ Found coverage summary at: ${summaryPath}`);
+        console.debug(`✅ Found coverage summary at: ${summaryPath}`);
         return { type: 'summary', path: summaryPath };
       }
     }
@@ -732,7 +738,7 @@ export class CoverageReporterService {
       }
 
       if (coverageFiles.length > 0) {
-        console.log(
+        console.debug(
           `✅ Found ${coverageFiles.length} package-specific coverage files`,
         );
         return { type: 'packages', files: coverageFiles };
@@ -746,17 +752,17 @@ export class CoverageReporterService {
 
   readBaselineCoverage(extractDir) {
     // Debug: show what's actually in the extracted directory
-    console.log('🔍 Debugging extracted artifact contents...');
+    console.debug('🔍 Debugging extracted artifact contents...');
     try {
       const dirContents = this.fs.readdirSync(extractDir);
-      console.log('📁 Root directory contents:', dirContents);
+      console.debug('📁 Root directory contents:', dirContents);
 
       // Check each subdirectory
       for (const item of dirContents) {
         const itemPath = path.join(extractDir, item);
         if (this.fs.statSync(itemPath).isDirectory()) {
           const subContents = this.fs.readdirSync(itemPath);
-          console.log(`📁 ${item}/ contents:`, subContents);
+          console.debug(`📁 ${item}/ contents:`, subContents);
         }
       }
     } catch (error) {
@@ -776,7 +782,7 @@ export class CoverageReporterService {
         const baselineData = JSON.parse(
           this.fs.readFileSync(coverageResult.path, 'utf8'),
         );
-        console.log('✅ Baseline coverage loaded from summary file');
+        console.debug('✅ Baseline coverage loaded from summary file');
         return (
           baselineData.details ||
           this.parseCoverageFromSummary({ total: baselineData })
@@ -794,14 +800,14 @@ export class CoverageReporterService {
   }
 
   combinePackageCoverage(coverageFiles) {
-    console.log('🔄 Processing package-specific coverage data...');
+    console.debug('🔄 Processing package-specific coverage data...');
 
     const packages = [];
 
     for (const { package: pkgName, path: filePath } of coverageFiles) {
       try {
         const pkgCoverage = JSON.parse(this.fs.readFileSync(filePath, 'utf8'));
-        console.log(`📦 Processing coverage for ${pkgName}`);
+        console.debug(`📦 Processing coverage for ${pkgName}`);
 
         // Extract coverage percentages from the coverage JSON (c8/istanbul format)
         const coverage = this.parseCoverageFromSummary(pkgCoverage);
@@ -813,7 +819,7 @@ export class CoverageReporterService {
       }
     }
 
-    console.log(`✅ Processed ${packages.length} package coverages`);
+    console.debug(`✅ Processed ${packages.length} package coverages`);
     return { type: 'packages', packages };
   }
 
@@ -834,7 +840,7 @@ export class CoverageReporterService {
     let baselineCoverage = null;
 
     try {
-      console.log(
+      console.debug(
         `📦 Downloading baseline artifact: ${inputs.baselineArtifactName}`,
         { repoInfo },
       );

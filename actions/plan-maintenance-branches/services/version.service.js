@@ -18,7 +18,7 @@ export class VersionService {
   getMajorBumpPackages(baseDir) {
     const files = loadChangesetFiles(this.fs, baseDir);
     if (files.length === 0) {
-      console.log('ℹ️ No changesets found.');
+      console.debug('ℹ️ No changesets found.');
       return new Set();
     }
     return PackageUtil.extractMajorBumpPackagesFromChangesets(files);
@@ -42,7 +42,7 @@ export class VersionService {
         version: pkgInfo.version,
         dirName: pkgInfo.dirName,
       };
-      console.log(`📋 Planned maintenance branch: ${branchName}`);
+      console.debug(`📋 Planned maintenance branch: ${branchName}`);
     }
 
     return plan;
@@ -57,7 +57,7 @@ export class VersionService {
     }
 
     this.fs.writeFileSync(planFilePath, JSON.stringify(plan, null, 2), 'utf-8');
-    console.log(`✅ Plan written to: ${planFilePath}`);
+    console.debug(`✅ Plan written to: ${planFilePath}`);
   }
 
   runChangesetVersion() {
@@ -65,29 +65,29 @@ export class VersionService {
   }
 
   async run(env = process.env, baseDir = process.cwd()) {
-    console.log('🔄 Starting version script...');
+    console.debug('🔄 Starting version script...');
 
     const majorBumpPackages = this.getMajorBumpPackages(baseDir);
 
     if (majorBumpPackages.size === 0) {
-      console.log(
+      console.debug(
         'ℹ️ No major version bumps detected. Writing empty plan file.',
       );
       this.writePlanFile({}, baseDir);
       return;
     }
 
-    console.log(
+    console.debug(
       `🔍 Major bump packages detected: ${Array.from(majorBumpPackages).join(', ')}`,
     );
 
     const plan = this.generateMaintenancePlan(majorBumpPackages, baseDir);
     this.writePlanFile(plan, baseDir);
 
-    console.log('📦 Running changeset version...');
+    console.debug('📦 Running changeset version...');
     this.runChangesetVersion();
 
-    console.log('✅ Version script completed successfully.');
+    console.debug('✅ Version script completed successfully.');
   }
 }
 
