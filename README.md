@@ -115,6 +115,7 @@ Publishes packages to npm and creates maintenance branches based on plans. Handl
 
 - `working-directory` (optional): Directory to run release commands in
 - `npm-token` (required): NPM authentication token for publishing
+- `github-token` (required): GitHub token used for repository access during release
 
 ## Usage Examples
 
@@ -183,6 +184,7 @@ jobs:
       - uses: deresegetachew/systemcraft-stack-actions/actions/release-with-branching@main
         with:
           npm-token: ${{ secrets.NPM_TOKEN }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
 ```
 
 ## Development

@@ -2,6 +2,7 @@ import { describe, it, mock, afterEach, beforeEach } from 'node:test';
 import assert from 'node:assert';
 
 import { ReleaseService } from './services/release.service.js';
+import { configureAuthEnv } from './index.js';
 
 describe('ReleaseService', () => {
   const planFilePath = '.release-meta/maintenance-branches.json';
@@ -256,5 +257,41 @@ describe('ReleaseService', () => {
         assert.ok(publishCall, 'Should call changeset publish');
       });
     });
+  });
+});
+
+describe('configureAuthEnv', () => {
+  let originalEnv;
+
+  beforeEach(() => {
+    originalEnv = { ...process.env };
+    delete process.env.NPM_TOKEN;
+    delete process.env.NODE_AUTH_TOKEN;
+    delete process.env.GITHUB_TOKEN;
+  });
+
+  afterEach(() => {
+    process.env = originalEnv;
+  });
+
+  it('applies provided npm and github tokens to env and process', () => {
+    const env = {
+      INPUT_NPM_TOKEN: 'npm-token',
+      INPUT_GITHUB_TOKEN: 'gh-token',
+    };
+
+    const result = configureAuthEnv(env);
+
+    assert.strictEqual(result.NODE_AUTH_TOKEN, 'npm-token');
+    assert.strictEqual(process.env.NODE_AUTH_TOKEN, 'npm-token');
+    assert.strictEqual(process.env.GITHUB_TOKEN, 'gh-token');
+  });
+
+  it('throws when npm token missing', () => {
+    assert.throws(
+      () => configureAuthEnv({}),
+      /Missing npm token/,
+      'Should require npm token input',
+    );
   });
 });

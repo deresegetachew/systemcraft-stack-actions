@@ -5,6 +5,12 @@ inputs:
     description: 'Enable multi-release mode for handling maintenance branches'
     required: false
     default: 'false'
+  npm-token:
+    description: 'NPM authentication token used for publishing packages'
+    required: true
+  github-token:
+    description: 'GitHub token used for repository access during release'
+    required: true
 runs:
   using: node20
   main: dist/index.js

@@ -21,7 +21,8 @@ module.exports = __WEBPACK_EXTERNAL_createRequire(import.meta.url)("node:path");
 
 __nccwpck_require__.a(__webpack_module__, async (__webpack_handle_async_dependencies__, __webpack_async_result__) => { try {
 /* harmony export */ __nccwpck_require__.d(__webpack_exports__, {
-/* harmony export */   i: () => (/* binding */ main)
+/* harmony export */   i: () => (/* binding */ main),
+/* harmony export */   o: () => (/* binding */ configureAuthEnv)
 /* harmony export */ });
 /* harmony import */ var node_fs__WEBPACK_IMPORTED_MODULE_0__ = __nccwpck_require__(24);
 /* harmony import */ var node_path__WEBPACK_IMPORTED_MODULE_1__ = __nccwpck_require__(760);
@@ -35,6 +36,29 @@ __nccwpck_require__.a(__webpack_module__, async (__webpack_handle_async_dependen
 
 
 
+function configureAuthEnv(env = {}) {
+  const updatedEnv = { ...env };
+
+  const npmToken = updatedEnv.INPUT_NPM_TOKEN;
+
+  if (npmToken) {
+    updatedEnv.NODE_AUTH_TOKEN = npmToken;
+    process.env.NODE_AUTH_TOKEN = npmToken;
+  } else {
+    throw new Error('❌ Missing npm token. Provide "npm-token" input.');
+  }
+
+  const githubToken = updatedEnv.INPUT_GITHUB_TOKEN;
+
+  if (githubToken) {
+    process.env.GITHUB_TOKEN = githubToken;
+  } else {
+    console.warn('⚠️ No GitHub token provided. Git operations may fail.');
+  }
+
+  return updatedEnv;
+}
+
 // Main function with default dependencies
 async function main(
   env = process.env,
@@ -42,8 +66,9 @@ async function main(
   shellUtil = new _libs_utils_index_js__WEBPACK_IMPORTED_MODULE_2__/* .ShellUtil */ .Rs(),
   pathApi = node_path__WEBPACK_IMPORTED_MODULE_1__,
 ) {
+  const runtimeEnv = configureAuthEnv(env);
   const releaseService = _services_release_service_js__WEBPACK_IMPORTED_MODULE_3__/* .ReleaseService */ .p.create(shellUtil, fsApi, pathApi);
-  return await releaseService.run(env);
+  return await releaseService.run(runtimeEnv);
 }
 
 if (import.meta.url === `file://${process.argv[1]}`) {
@@ -1094,6 +1119,7 @@ class ShellUtil {
 /******/ // This entry module used 'module' so it can't be inlined
 /******/ var __webpack_exports__ = __nccwpck_require__(347);
 /******/ __webpack_exports__ = await __webpack_exports__;
+/******/ var __webpack_exports__configureAuthEnv = __webpack_exports__.o;
 /******/ var __webpack_exports__main = __webpack_exports__.i;
-/******/ export { __webpack_exports__main as main };
+/******/ export { __webpack_exports__configureAuthEnv as configureAuthEnv, __webpack_exports__main as main };
 /******/ 
