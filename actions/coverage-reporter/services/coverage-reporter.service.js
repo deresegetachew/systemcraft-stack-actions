@@ -16,6 +16,46 @@ export class CoverageReporterService {
     return new CoverageReporterService();
   }
 
+  async run(inputs) {
+    console.log('🚀 Starting coverage reporting...');
+
+    const normalizedInputs = this.normalizeInputs(inputs);
+
+    console.log('Normalized inputs', normalizedInputs);
+
+    this.ensureDirectory(normalizedInputs.outputDir);
+
+    // Ensure Git client always has the latest token (from inputs or env)
+    this.git.githubToken =
+      normalizedInputs.githubToken ||
+      process.env.GITHUB_TOKEN ||
+      this.git.githubToken;
+
+    const baselineCoverage = await this.getBaselineCoverage(normalizedInputs);
+    const coverage = this.getCurrentCoverage(normalizedInputs);
+
+    console.log(`Baseline data:, ${JSON.stringify(baselineCoverage, null, 2)}`);
+    console.log(`Coverage data: ${JSON.stringify(coverage, null, 2)}`);
+
+    const summary = this.createSummary(
+      coverage,
+      baselineCoverage,
+      normalizedInputs.minimumCoverage,
+    );
+
+    this.persistSummaryFiles(summary, coverage, normalizedInputs);
+    this.copyHtmlReports(normalizedInputs.outputDir);
+    this.logFinalStats(summary, baselineCoverage);
+
+    return {
+      coveragePercentage: summary.overall.toFixed(2),
+      status: summary.status,
+      artifactsPath: normalizedInputs.outputDir,
+      summary,
+      baselineCoverage,
+    };
+  }
+
   ensureDirectory(dirPath) {
     if (!this.fs.existsSync(dirPath)) {
       this.fs.mkdirSync(dirPath, { recursive: true });
@@ -257,6 +297,7 @@ export class CoverageReporterService {
   }
 
   parseCoverageFromSummary(summary) {
+    console.log(`parsing summary coverage ${{ summary }}`);
     const { total } = summary;
     return {
       statements: total.statements.pct,
@@ -490,7 +531,7 @@ export class CoverageReporterService {
     return { statements: 0, branches: 0, functions: 0, lines: 0 };
   }
 
-  getCoverage(inputs) {
+  getCurrentCoverage(inputs) {
     let coverageData = this.loadCurrentCoverage(
       inputs.outputDir,
       inputs.coverageFile,
@@ -534,7 +575,8 @@ export class CoverageReporterService {
 
     if (coverageData && coverageData.type === 'packages') {
       console.log('📦 Aggregating package coverage...');
-      return this.aggregatePackageCoverage(coverageData);
+      return this.combinePackageCoverage(coverageData);
+      // return this.aggregatePackageCoverage(coverageData);
     }
 
     return coverageData;
@@ -779,7 +821,7 @@ export class CoverageReporterService {
     this.fs.rmSync(this.tempDir, { recursive: true, force: true });
   }
 
-  async downloadBaseline(inputs) {
+  async getBaselineCoverage(inputs) {
     if (!this.shouldDownloadBaseline(inputs)) {
       return null;
     }
@@ -823,41 +865,5 @@ export class CoverageReporterService {
     } finally {
       this.cleanupBaselineWorkspace();
     }
-  }
-
-  async run(inputs) {
-    console.log('🚀 Starting coverage reporting...');
-
-    const normalizedInputs = this.normalizeInputs(inputs);
-    this.ensureDirectory(normalizedInputs.outputDir);
-
-    // Ensure Git client always has the latest token (from inputs or env)
-    this.git.githubToken =
-      normalizedInputs.githubToken ||
-      process.env.GITHUB_TOKEN ||
-      this.git.githubToken;
-
-    const baselineCoverage = await this.downloadBaseline(normalizedInputs);
-    const coverage = this.getCoverage(normalizedInputs);
-
-    console.log(`Coverage data: ${JSON.stringify(coverage, null, 2)}`);
-
-    const summary = this.createSummary(
-      coverage,
-      baselineCoverage,
-      normalizedInputs.minimumCoverage,
-    );
-
-    this.persistSummaryFiles(summary, coverage, normalizedInputs);
-    this.copyHtmlReports(normalizedInputs.outputDir);
-    this.logFinalStats(summary, baselineCoverage);
-
-    return {
-      coveragePercentage: summary.overall.toFixed(2),
-      status: summary.status,
-      artifactsPath: normalizedInputs.outputDir,
-      summary,
-      baselineCoverage,
-    };
   }
 }
