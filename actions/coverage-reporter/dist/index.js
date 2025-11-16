@@ -27880,6 +27880,10 @@ function getActionInput(name, env = process.env) {
     .toUpperCase();
   const key = `INPUT_${normalizedName}`;
 
+  console.log("key", key)
+  console.log("env.key", env?.[key])
+
+
   return env?.[key] ?? '';
 }
 
@@ -29088,8 +29092,7 @@ const DEFAULTS = {
 
 async function main() {
   try {
-    console.log(`env variables`, { envVars: process.env });
-    console.log(`githubToken : ${getActionInput('github-token')}`)
+    console.log(`githubToken : ${getActionInput('github-token')}`);
 
     const inputs = {
       coverageCommand:
@@ -29107,8 +29110,7 @@ async function main() {
         const parsed = Number(input);
         return Number.isNaN(parsed) ? DEFAULTS.minimumCoverage : parsed;
       })(),
-      githubToken:
-        getActionInput('github-token'),
+      githubToken: getActionInput('github-token'),
       enableDiff: getBooleanActionInput('enable-diff') ?? DEFAULTS.enableDiff,
       baselineArtifactName:
         getActionInput('baseline-artifact-name') ||
