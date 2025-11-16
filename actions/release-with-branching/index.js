@@ -22,7 +22,7 @@ if (import.meta.url === `file://${process.argv[1]}`) {
   } catch (err) {
     // If the error is about skipping, it's not a failure.
     if (err.message.includes('Skipping release process')) {
-      console.log(`✅ ${err.message}`);
+      console.debug(`✅ ${err.message}`);
       process.exit(0);
     } else {
       console.error(err.message);

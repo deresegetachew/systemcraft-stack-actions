@@ -38,7 +38,7 @@ export class ReleaseService {
 
     steps.push({ type: 'exec', cmd: 'pnpm changeset publish' });
 
-    console.log(
+    console.debug(
       `planned release steps: ${steps.map((s) => s.type).join(', ')}`,
     );
     return steps;
@@ -69,19 +69,19 @@ export class ReleaseService {
   }
 
   ensureMaintenanceBranch(branchName) {
-    console.log(`Checking for branch '${branchName}'...`);
+    console.debug(`Checking for branch '${branchName}'...`);
 
     const branchExists = this.git.checkRemoteBranch(branchName);
 
     if (!branchExists) {
-      console.log(`Creating '${branchName}'...`);
+      console.debug(`Creating '${branchName}'...`);
       this.git.createBranch(branchName, 'HEAD~1');
       this.git.pushBranch(branchName);
-      console.log(
+      console.debug(
         `✅ Created and pushed '${branchName}' from previous commit.`,
       );
     } else {
-      console.log(`✅ Branch '${branchName}' already exists.`);
+      console.debug(`✅ Branch '${branchName}' already exists.`);
     }
   }
 
@@ -117,12 +117,12 @@ export class ReleaseService {
       (file) => file.endsWith('package.json') || file.endsWith('CHANGELOG.md'),
     );
 
-    console.log(
+    console.debug(
       `Checking for release commit by inspecting changed files in HEAD...`,
     );
 
     if (latestChangesAreReleaseChanges) {
-      console.log(
+      console.debug(
         '✅ Versioning changes detected (package.json, CHANGELOG.md, or .changeset/ files modified). Proceeding with release.',
       );
       return { proceedWithRelease: true };
@@ -132,24 +132,24 @@ export class ReleaseService {
   }
 
   async run(env = process.env) {
-    console.log('🚀 Starting release script...');
+    console.debug('🚀 Starting release script...');
 
     const ctx = this.getReleaseContext(env);
     const { proceedWithRelease } = await this.validatePreconditions(ctx);
 
-    console.log(`🔍 Current branch: ${ctx.branchName}`);
-    console.log(`🔍 Multi-release mode: ${ctx.isMultiRelease}`);
-    console.log(`Proceed with release: ${proceedWithRelease}`);
+    console.debug(`🔍 Current branch: ${ctx.branchName}`);
+    console.debug(`🔍 Multi-release mode: ${ctx.isMultiRelease}`);
+    console.debug(`Proceed with release: ${proceedWithRelease}`);
 
     if (!proceedWithRelease) {
-      console.log('ℹ️ Skipping release process: No steps to execute.');
+      console.debug('ℹ️ Skipping release process: No steps to execute.');
       return;
     }
 
     const steps = this.planRelease(ctx);
-    console.log('📝 Planned steps:', steps.map((s) => s.type).join(', '));
+    console.debug('📝 Planned steps:', steps.map((s) => s.type).join(', '));
 
     this.executeSteps(steps);
-    console.log('✅ Release process completed successfully.');
+    console.debug('✅ Release process completed successfully.');
   }
 }

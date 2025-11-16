@@ -12,21 +12,21 @@ export class GitUtil {
 
     for (const command of strategies) {
       try {
-        console.log(`Trying: ${command}`);
+        console.debug(`Trying: ${command}`);
         const result = this.shell.exec(command, { stdio: 'pipe' });
         const files = result.stdout.split('\n').filter(Boolean);
 
-        console.log(`result.stdout:\n${result.stdout}`);
-        console.log(`Files changed:\n${files.join('\n')}`);
+        console.debug(`result.stdout:\n${result.stdout}`);
+        console.debug(`Files changed:\n${files.join('\n')}`);
 
         if (files.length > 0) {
-          console.log(
+          console.debug(
             `✅ Found ${files.length} changed files using: ${command}`,
           );
           return files;
         }
       } catch (error) {
-        console.log(`❌ Failed: ${command} - ${error.message}`);
+        console.debug(`❌ Failed: ${command} - ${error.message}`);
       }
     }
 
@@ -109,11 +109,11 @@ export class GitUtil {
     ];
 
     for (let i = 0; i < strategies.length; i++) {
-      console.log(`Trying diff strategy ${i + 1}...`);
+      console.debug(`Trying diff strategy ${i + 1}...`);
       const result = strategies[i]();
       if (result && result.trim()) {
         const files = result.trim().split('\n').filter(Boolean);
-        console.log(
+        console.debug(
           `✅ Successfully got ${files.length} changed files using strategy ${i + 1}`,
         );
         return files;
@@ -141,7 +141,7 @@ export class GitUtil {
       artifactName,
     });
 
-    console.log(`Fetching artifacts from ${listReqURL}`);
+    console.debug(`Fetching artifacts from ${listReqURL}`);
 
     const listResponse = await fetch(listReqURL, { headers });
 
@@ -155,7 +155,7 @@ export class GitUtil {
     const listData = await listResponse.json();
     const artifact = this.#findLatestArtifact(listData.artifacts);
 
-    console.log(`Latest Artifact iD: ${artifact.id}`);
+    console.debug(`Latest Artifact iD: ${artifact.id}`);
 
     // download artifact
     const downloadURL = this.#buildRequestURI('download', {
@@ -228,7 +228,7 @@ export class GitUtil {
   }
 
   #buildRequestHeaders() {
-    console.log(`token: ${this.githubToken}`);
+    console.debug(`token: ${this.githubToken}`);
 
     return {
       Authorization: `Bearer ${this.githubToken}`,
