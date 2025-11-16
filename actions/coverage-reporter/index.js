@@ -21,6 +21,7 @@ const DEFAULTS = {
 
 export async function main() {
   try {
+    console.log(`env variables`, { envVars: process.env });
     console.log(`githubToken : ${getActionInput('github-token')}`);
 
     const inputs = {

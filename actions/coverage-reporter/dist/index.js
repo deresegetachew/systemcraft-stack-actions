@@ -27880,9 +27880,8 @@ function getActionInput(name, env = process.env) {
     .toUpperCase();
   const key = `INPUT_${normalizedName}`;
 
-  console.log("key", key)
-  console.log("env.key", env?.[key])
-
+  console.log('key', key);
+  console.log('env.key', env?.[key]);
 
   return env?.[key] ?? '';
 }
@@ -29092,6 +29091,7 @@ const DEFAULTS = {
 
 async function main() {
   try {
+    console.log(`env variables`, { envVars: process.env });
     console.log(`githubToken : ${getActionInput('github-token')}`);
 
     const inputs = {

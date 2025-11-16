@@ -32148,9 +32148,8 @@ function getActionInput(name, env = process.env) {
     .toUpperCase();
   const key = `INPUT_${normalizedName}`;
 
-  console.log("key", key)
-  console.log("env.key", env?.[key])
-
+  console.log('key', key);
+  console.log('env.key', env?.[key]);
 
   return env?.[key] ?? '';
 }
