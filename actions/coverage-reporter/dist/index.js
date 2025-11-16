@@ -27877,8 +27877,8 @@ function getActionInput(name, env = process.env) {
   const normalizedName = name.trim().replace(/\s+/g, '_').toUpperCase();
   const key = `INPUT_${normalizedName}`;
 
-  console.log('key', key);
-  console.log('env.key', env?.[key]);
+  // console.log('key', key);
+  // console.log('env.key', env?.[key]);
 
   return env?.[key] ?? '';
 }
@@ -29088,7 +29088,6 @@ const DEFAULTS = {
 
 async function main() {
   try {
-
     const inputs = {
       coverageCommand:
         getActionInput('coverage-command') || DEFAULTS.coverageCommand,
