@@ -293,7 +293,7 @@ describe('configureAuthEnv', () => {
   it('throws when npm token missing', () => {
     assert.throws(
       () => configureAuthEnv({}),
-      /Missing NODE_AUTH_TOKEN/,
+      /Missing node-auth-token/,
       'Should require npm token input',
     );
   });

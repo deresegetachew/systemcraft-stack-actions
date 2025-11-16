@@ -1,14 +1,14 @@
 name: 'Release with Branching'
 description: 'Publish packages to npm and create maintenance branches for multi-release workflows'
 inputs:
-  enable_multi_release:
+  enable-multi-release:
     description: 'Enable multi-release mode for handling maintenance branches'
     required: false
     default: 'false'
-  node_auth_token:
+  node-auth-token:
     description: 'NPM authentication token used for publishing packages'
     required: true
-  github_token:
+  github-token:
     description: 'GitHub token used for repository access during release'
     required: true
 runs:

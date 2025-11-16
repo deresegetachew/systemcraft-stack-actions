@@ -39,28 +39,28 @@ __nccwpck_require__.a(__webpack_module__, async (__webpack_handle_async_dependen
 function configureAuthEnv(env = {}) {
   const updatedEnv = { ...env };
 
-  const npmToken = (0,_libs_utils_index_js__WEBPACK_IMPORTED_MODULE_2__/* .getActionInput */ .lL)('node_auth_token', env);
+  const npmToken = (0,_libs_utils_index_js__WEBPACK_IMPORTED_MODULE_2__/* .getActionInput */ .lL)('node-auth-token', env);
 
   if (!npmToken) {
-    throw new Error('❌ Missing node_auth_token input.');
+    throw new Error('❌ Missing node-auth-token input.');
   }
-  updatedEnv.node_auth_token = npmToken;
-  process.env.node_auth_token = npmToken;
+  updatedEnv.NODE_AUTH_TOKEN = npmToken;
+  process.env.NODE_AUTH_TOKEN = npmToken;
 
-  const githubToken = (0,_libs_utils_index_js__WEBPACK_IMPORTED_MODULE_2__/* .getActionInput */ .lL)('github_token', env);
+  const githubToken = (0,_libs_utils_index_js__WEBPACK_IMPORTED_MODULE_2__/* .getActionInput */ .lL)('github-token', env);
 
   if (!githubToken) {
-    throw new Error('❌ Missing github_token input.');
+    throw new Error('❌ Missing github-token input.');
   }
-  updatedEnv.github_token = githubToken;
-  process.env.github_token = githubToken;
+  updatedEnv.GITHUB_TOKEN = githubToken;
+  process.env.GITHUB_TOKEN = githubToken;
 
   const enableMultiRelease = (0,_libs_utils_index_js__WEBPACK_IMPORTED_MODULE_2__/* .getBooleanActionInput */ .Hj)(
-    'enable_multi_release',
+    'enable-multi-release',
     env,
   );
   if (typeof enableMultiRelease === 'boolean') {
-    updatedEnv.enable_multi_release = enableMultiRelease ? 'true' : 'false';
+    updatedEnv.ENABLE_MULTI_RELEASE = enableMultiRelease ? 'true' : 'false';
   }
 
   return updatedEnv;

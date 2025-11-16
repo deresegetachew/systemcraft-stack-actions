@@ -14,25 +14,25 @@ import { ReleaseService } from './services/release.service.js';
 export function configureAuthEnv(env = {}) {
   const updatedEnv = { ...env };
 
-  const npmToken = getActionInput('node_auth_token', env);
+  const npmToken = getActionInput('node-auth-token', env);
 
   if (!npmToken) {
-    throw new Error('❌ Missing node_auth_token input.');
+    throw new Error('❌ Missing node-auth-token input.');
   }
-  updatedEnv.node_auth_token = npmToken;
-  process.env.node_auth_token = npmToken;
+  updatedEnv.NODE_AUTH_TOKEN = npmToken;
+  process.env.NODE_AUTH_TOKEN = npmToken;
 
-  const githubToken = getActionInput('github_token', env);
+  const githubToken = getActionInput('github-token', env);
 
   if (!githubToken) {
-    throw new Error('❌ Missing github_token input.');
+    throw new Error('❌ Missing github-token input.');
   }
-  updatedEnv.github_token = githubToken;
-  process.env.github_token = githubToken;
+  updatedEnv.GITHUB_TOKEN = githubToken;
+  process.env.GITHUB_TOKEN = githubToken;
 
-  const enableMultiRelease = getBooleanActionInput('enable_multi_release', env);
+  const enableMultiRelease = getBooleanActionInput('enable-multi-release', env);
   if (typeof enableMultiRelease === 'boolean') {
-    updatedEnv.enable_multi_release = enableMultiRelease ? 'true' : 'false';
+    updatedEnv.ENABLE_MULTI_RELEASE = enableMultiRelease ? 'true' : 'false';
   }
 
   return updatedEnv;
