@@ -113,9 +113,9 @@ Publishes packages to npm and creates maintenance branches based on plans. Handl
 
 **Inputs:**
 
-- `working-directory` (optional): Directory to run release commands in
-- `npm-token` (required): NPM authentication token for publishing
-- `github-token` (required): GitHub token used for repository access during release
+- `ENABLE_MULTI_RELEASE` (optional): Controls multi-release mode (`'false'` by default).
+- `NODE_AUTH_TOKEN` (required): NPM authentication token for publishing.
+- `GITHUB_TOKEN` (required): GitHub token used for repository access during release.
 
 ## Usage Examples
 
@@ -183,8 +183,9 @@ jobs:
       - uses: actions/checkout@v4
       - uses: deresegetachew/systemcraft-stack-actions/actions/release-with-branching@main
         with:
-          npm-token: ${{ secrets.NPM_TOKEN }}
-          github-token: ${{ secrets.GITHUB_TOKEN }}
+          ENABLE_MULTI_RELEASE: ${{ vars.ENABLE_MULTI_RELEASE }}
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 ```
 
 ## Development
