@@ -155,7 +155,7 @@ export class GitUtil {
     const listData = await listResponse.json();
     const artifact = this.#findLatestArtifact(listData.artifacts);
 
-    console.info(`Latest Artifact iD: ${artifact.id}`);
+    console.log(`Latest Artifact iD: ${artifact.id}`);
 
     // download artifact
     const downloadURL = this.#buildRequestURI('download', {
