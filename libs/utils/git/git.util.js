@@ -212,6 +212,8 @@ export class GitUtil {
       return null;
     }
 
+    console.log('matchingArtifacts:', matchingArtifacts);
+
     return matchingArtifacts[0];
   }
 
