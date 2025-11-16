@@ -4,14 +4,13 @@
 import core from '@actions/core';
 import github from '@actions/github';
 
+import { getActionInput } from '../../libs/utils/index.js';
+
 import { ChangesetRequirementService } from './services/changeset-requirement.service.js';
 
 async function main() {
   try {
-    const skipLabel =
-      core.getInput('skip-label') ||
-      process.env['INPUT_SKIP-LABEL'] ||
-      '[skip changeset check]';
+    const skipLabel = getActionInput('skip-label') || '[skip changeset check]';
     const context = github.context;
 
     console.debug(`Event type: ${context.eventName}`);

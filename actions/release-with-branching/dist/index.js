@@ -26,7 +26,7 @@ __nccwpck_require__.a(__webpack_module__, async (__webpack_handle_async_dependen
 /* harmony export */ });
 /* harmony import */ var node_fs__WEBPACK_IMPORTED_MODULE_0__ = __nccwpck_require__(24);
 /* harmony import */ var node_path__WEBPACK_IMPORTED_MODULE_1__ = __nccwpck_require__(760);
-/* harmony import */ var _libs_utils_index_js__WEBPACK_IMPORTED_MODULE_2__ = __nccwpck_require__(36);
+/* harmony import */ var _libs_utils_index_js__WEBPACK_IMPORTED_MODULE_2__ = __nccwpck_require__(379);
 /* harmony import */ var _services_release_service_js__WEBPACK_IMPORTED_MODULE_3__ = __nccwpck_require__(912);
 
 
@@ -39,7 +39,7 @@ __nccwpck_require__.a(__webpack_module__, async (__webpack_handle_async_dependen
 function configureAuthEnv(env = {}) {
   const updatedEnv = { ...env };
 
-  const npmToken = updatedEnv.INPUT_NPM_TOKEN;
+  const npmToken = (0,_libs_utils_index_js__WEBPACK_IMPORTED_MODULE_2__/* .getActionInput */ .lL)('node-auth-token', env);
 
   if (npmToken) {
     updatedEnv.NODE_AUTH_TOKEN = npmToken;
@@ -48,12 +48,21 @@ function configureAuthEnv(env = {}) {
     throw new Error('❌ Missing npm token. Provide "npm-token" input.');
   }
 
-  const githubToken = updatedEnv.INPUT_GITHUB_TOKEN;
+  const githubToken = (0,_libs_utils_index_js__WEBPACK_IMPORTED_MODULE_2__/* .getActionInput */ .lL)('github-token', env);
 
   if (githubToken) {
+    updatedEnv.GITHUB_TOKEN = githubToken;
     process.env.GITHUB_TOKEN = githubToken;
   } else {
     console.warn('⚠️ No GitHub token provided. Git operations may fail.');
+  }
+
+  const enableMultiRelease = (0,_libs_utils_index_js__WEBPACK_IMPORTED_MODULE_2__/* .getBooleanActionInput */ .Hj)(
+    'enable-multi-release',
+    env,
+  );
+  if (typeof enableMultiRelease === 'boolean') {
+    updatedEnv.ENABLE_MULTI_RELEASE = enableMultiRelease ? 'true' : 'false';
   }
 
   return updatedEnv;
@@ -98,7 +107,7 @@ __webpack_async_result__();
 /* harmony export */   p: () => (/* binding */ ReleaseService)
 /* harmony export */ });
 /* harmony import */ var node_path__WEBPACK_IMPORTED_MODULE_0__ = __nccwpck_require__(760);
-/* harmony import */ var _systemcraft_stack_actions_utils__WEBPACK_IMPORTED_MODULE_1__ = __nccwpck_require__(36);
+/* harmony import */ var _systemcraft_stack_actions_utils__WEBPACK_IMPORTED_MODULE_1__ = __nccwpck_require__(379);
 
 
 
@@ -261,14 +270,16 @@ class ReleaseService {
 
 /***/ }),
 
-/***/ 36:
+/***/ 379:
 /***/ ((__unused_webpack___webpack_module__, __webpack_exports__, __nccwpck_require__) => {
 
 
 // EXPORTS
 __nccwpck_require__.d(__webpack_exports__, {
   Hc: () => (/* reexport */ GitUtil),
-  Rs: () => (/* reexport */ ShellUtil)
+  Rs: () => (/* reexport */ ShellUtil),
+  lL: () => (/* reexport */ getActionInput),
+  Hj: () => (/* reexport */ getBooleanActionInput)
 });
 
 // UNUSED EXPORTS: FSUtil, PackageUtil, extractMajorBumpPackagesFromChangesets, getPackageInfo, loadChangesetFiles, sanitizePackageDir
@@ -650,6 +661,30 @@ class GitUtil {
   }
 }
 
+;// CONCATENATED MODULE: ../../libs/utils/env/env.util.js
+function getActionInput(name, env = process.env) {
+  if (!name) {
+    throw new Error('Input name is required');
+  }
+
+  const normalizedName = name
+    .trim()
+    .replace(/[\s-]+/g, '_')
+    .toUpperCase();
+  const key = `INPUT_${normalizedName}`;
+
+  return env?.[key] ?? '';
+}
+
+function getBooleanActionInput(name, env = process.env) {
+  const value = getActionInput(name, env);
+  if (!value) {
+    return undefined;
+  }
+
+  return value.toLowerCase() === 'true';
+}
+
 ;// CONCATENATED MODULE: ../../libs/utils/package/package.util.js
 
 
@@ -940,6 +975,7 @@ class ShellUtil {
 }
 
 ;// CONCATENATED MODULE: ../../libs/utils/index.js
+
 
 
 

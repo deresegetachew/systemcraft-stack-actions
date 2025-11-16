@@ -5,7 +5,7 @@ inputs:
     description: 'Enable multi-release mode for handling maintenance branches'
     required: false
     default: 'false'
-  npm-token:
+  node-auth-token:
     description: 'NPM authentication token used for publishing packages'
     required: true
   github-token:

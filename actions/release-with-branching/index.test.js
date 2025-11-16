@@ -278,6 +278,7 @@ describe('configureAuthEnv', () => {
     const env = {
       INPUT_NPM_TOKEN: 'npm-token',
       INPUT_GITHUB_TOKEN: 'gh-token',
+      INPUT_ENABLE_MULTI_RELEASE: 'true',
     };
 
     const result = configureAuthEnv(env);
@@ -285,6 +286,7 @@ describe('configureAuthEnv', () => {
     assert.strictEqual(result.NODE_AUTH_TOKEN, 'npm-token');
     assert.strictEqual(process.env.NODE_AUTH_TOKEN, 'npm-token');
     assert.strictEqual(process.env.GITHUB_TOKEN, 'gh-token');
+    assert.strictEqual(result.ENABLE_MULTI_RELEASE, 'true');
   });
 
   it('throws when npm token missing', () => {

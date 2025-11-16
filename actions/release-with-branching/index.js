@@ -3,14 +3,18 @@
 import fs from 'node:fs';
 import path from 'node:path';
 
-import { ShellUtil } from '../../libs/utils/index.js';
+import {
+  ShellUtil,
+  getActionInput,
+  getBooleanActionInput,
+} from '../../libs/utils/index.js';
 
 import { ReleaseService } from './services/release.service.js';
 
 export function configureAuthEnv(env = {}) {
   const updatedEnv = { ...env };
 
-  const npmToken = updatedEnv.INPUT_NPM_TOKEN;
+  const npmToken = getActionInput('node-auth-token', env);
 
   if (npmToken) {
     updatedEnv.NODE_AUTH_TOKEN = npmToken;
@@ -19,12 +23,18 @@ export function configureAuthEnv(env = {}) {
     throw new Error('❌ Missing npm token. Provide "npm-token" input.');
   }
 
-  const githubToken = updatedEnv.INPUT_GITHUB_TOKEN;
+  const githubToken = getActionInput('github-token', env);
 
   if (githubToken) {
+    updatedEnv.GITHUB_TOKEN = githubToken;
     process.env.GITHUB_TOKEN = githubToken;
   } else {
     console.warn('⚠️ No GitHub token provided. Git operations may fail.');
+  }
+
+  const enableMultiRelease = getBooleanActionInput('enable-multi-release', env);
+  if (typeof enableMultiRelease === 'boolean') {
+    updatedEnv.ENABLE_MULTI_RELEASE = enableMultiRelease ? 'true' : 'false';
   }
 
   return updatedEnv;

@@ -177,7 +177,7 @@ __nccwpck_require__.d(__webpack_exports__, {
   kK: () => (/* reexport */ loadChangesetFiles)
 });
 
-// UNUSED EXPORTS: FSUtil, GitUtil, extractMajorBumpPackagesFromChangesets, sanitizePackageDir
+// UNUSED EXPORTS: FSUtil, GitUtil, extractMajorBumpPackagesFromChangesets, getActionInput, getBooleanActionInput, sanitizePackageDir
 
 // EXTERNAL MODULE: external "node:fs"
 var external_node_fs_ = __nccwpck_require__(24);
@@ -579,6 +579,7 @@ class ShellUtil {
 }
 
 ;// CONCATENATED MODULE: ../../libs/utils/index.js
+
 
 
 

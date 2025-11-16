@@ -32136,6 +32136,30 @@ class GitUtil {
   }
 }
 
+;// CONCATENATED MODULE: ../../libs/utils/env/env.util.js
+function getActionInput(name, env = process.env) {
+  if (!name) {
+    throw new Error('Input name is required');
+  }
+
+  const normalizedName = name
+    .trim()
+    .replace(/[\s-]+/g, '_')
+    .toUpperCase();
+  const key = `INPUT_${normalizedName}`;
+
+  return env?.[key] ?? '';
+}
+
+function getBooleanActionInput(name, env = process.env) {
+  const value = getActionInput(name, env);
+  if (!value) {
+    return undefined;
+  }
+
+  return value.toLowerCase() === 'true';
+}
+
 ;// CONCATENATED MODULE: ../../libs/utils/package/package.util.js
 
 
@@ -32431,6 +32455,7 @@ class ShellUtil {
 
 
 
+
 ;// CONCATENATED MODULE: ./services/changeset-requirement.service.js
 
 
@@ -32602,12 +32627,12 @@ class ChangesetRequirementService {
 
 
 
+
+
 async function main() {
   try {
     const skipLabel =
-      core.getInput('skip-label') ||
-      process.env['INPUT_SKIP-LABEL'] ||
-      '[skip changeset check]';
+      getActionInput('skip-label') || '[skip changeset check]';
     const context = github.context;
 
     console.debug(`Event type: ${context.eventName}`);

@@ -27495,8 +27495,6 @@ const external_node_fs_namespaceObject = __WEBPACK_EXTERNAL_createRequire(import
 var external_node_fs_namespaceObject_0 = /*#__PURE__*/__nccwpck_require__.t(external_node_fs_namespaceObject, 2);
 ;// CONCATENATED MODULE: external "node:path"
 const external_node_path_namespaceObject = __WEBPACK_EXTERNAL_createRequire(import.meta.url)("node:path");
-;// CONCATENATED MODULE: external "node:os"
-const external_node_os_namespaceObject = __WEBPACK_EXTERNAL_createRequire(import.meta.url)("node:os");
 ;// CONCATENATED MODULE: ../../libs/utils/fs/fs.util.js
 
 
@@ -27870,6 +27868,30 @@ class GitUtil {
   }
 }
 
+;// CONCATENATED MODULE: ../../libs/utils/env/env.util.js
+function getActionInput(name, env = process.env) {
+  if (!name) {
+    throw new Error('Input name is required');
+  }
+
+  const normalizedName = name
+    .trim()
+    .replace(/[\s-]+/g, '_')
+    .toUpperCase();
+  const key = `INPUT_${normalizedName}`;
+
+  return env?.[key] ?? '';
+}
+
+function getBooleanActionInput(name, env = process.env) {
+  const value = getActionInput(name, env);
+  if (!value) {
+    return undefined;
+  }
+
+  return value.toLowerCase() === 'true';
+}
+
 ;// CONCATENATED MODULE: ../../libs/utils/package/package.util.js
 
 
@@ -28165,6 +28187,9 @@ class ShellUtil {
 
 
 
+
+;// CONCATENATED MODULE: external "node:os"
+const external_node_os_namespaceObject = __WEBPACK_EXTERNAL_createRequire(import.meta.url)("node:os");
 ;// CONCATENATED MODULE: ./services/coverage-reporter.service.js
 
 
@@ -29047,6 +29072,8 @@ class CoverageReporterService {
 
 
 
+
+
 const DEFAULTS = {
   coverageCommand: 'pnpm test -- --coverage',
   coverageFile: 'coverage/coverage-summary.json',
@@ -29059,61 +29086,33 @@ const DEFAULTS = {
   baseBranch: 'main',
 };
 
-function getInputOrDefault(name, fallback) {
-  const value = core.getInput(name);
-  return value ? value : fallback;
-}
-
-function getBooleanInputOrDefault(name, fallback) {
-  const value = core.getInput(name);
-  if (!value) {
-    return fallback;
-  }
-
-  return value.toLowerCase() === 'true';
-}
-
-function getNumberInputOrDefault(name, fallback) {
-  const value = core.getInput(name);
-  if (!value) {
-    return fallback;
-  }
-
-  const parsed = Number(value);
-  return Number.isNaN(parsed) ? fallback : parsed;
-}
-
 async function main() {
   try {
     const inputs = {
-      coverageCommand: getInputOrDefault(
-        'coverage-command',
-        DEFAULTS.coverageCommand,
-      ),
-      coverageFile: getInputOrDefault('coverage-file', DEFAULTS.coverageFile),
-      coverageFormat: getInputOrDefault(
-        'coverage-format',
-        DEFAULTS.coverageFormat,
-      ),
-      outputDir: getInputOrDefault('output-dir', DEFAULTS.outputDir),
-      enablePrComments: getBooleanInputOrDefault(
-        'enable-pr-comments',
+      coverageCommand:
+        getActionInput('coverage-command') || DEFAULTS.coverageCommand,
+      coverageFile:
+        getActionInput('coverage-file') || DEFAULTS.coverageFile,
+      coverageFormat:
+        getActionInput('coverage-format') || DEFAULTS.coverageFormat,
+      outputDir: getActionInput('output-dir') || DEFAULTS.outputDir,
+      enablePrComments:
+        getBooleanActionInput('enable-pr-comments') ??
         DEFAULTS.enablePrComments,
-      ),
-      minimumCoverage: getNumberInputOrDefault(
-        'minimum-coverage',
-        DEFAULTS.minimumCoverage,
-      ),
-      githubToken: getInputOrDefault(
-        'github-token',
-        process.env.GITHUB_TOKEN || '',
-      ),
-      enableDiff: getBooleanInputOrDefault('enable-diff', DEFAULTS.enableDiff),
-      baselineArtifactName: getInputOrDefault(
-        'baseline-artifact-name',
+      minimumCoverage: (() => {
+        const input = getActionInput('minimum-coverage');
+        if (!input) return DEFAULTS.minimumCoverage;
+        const parsed = Number(input);
+        return Number.isNaN(parsed) ? DEFAULTS.minimumCoverage : parsed;
+      })(),
+      githubToken:
+        getActionInput('github-token') || process.env.GITHUB_TOKEN || '',
+      enableDiff:
+        getBooleanActionInput('enable-diff') ?? DEFAULTS.enableDiff,
+      baselineArtifactName:
+        getActionInput('baseline-artifact-name') ||
         DEFAULTS.baselineArtifactName,
-      ),
-      baseBranch: getInputOrDefault('base-branch', DEFAULTS.baseBranch),
+      baseBranch: getActionInput('base-branch') || DEFAULTS.baseBranch,
     };
 
     const service = new CoverageReporterService();
