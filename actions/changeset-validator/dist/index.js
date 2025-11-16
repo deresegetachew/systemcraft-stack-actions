@@ -32084,7 +32084,7 @@ class GitUtil {
       return null;
     }
 
-    console.log('matchingArtifacts:', matchingArtifacts);
+    console.log('matchingArtifacts:', matchingArtifacts[0]);
 
     return matchingArtifacts[0];
   }
