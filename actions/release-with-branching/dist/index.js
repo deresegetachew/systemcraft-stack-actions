@@ -55,10 +55,7 @@ function configureAuthEnv(env = {}) {
   updatedEnv.GITHUB_TOKEN = githubToken;
   process.env.GITHUB_TOKEN = githubToken;
 
-  const enableMultiRelease = (0,_libs_utils_index_js__WEBPACK_IMPORTED_MODULE_2__/* .getBooleanActionInput */ .Hj)(
-    'enable-multi-release',
-    env,
-  );
+  const enableMultiRelease = (0,_libs_utils_index_js__WEBPACK_IMPORTED_MODULE_2__/* .getBooleanActionInput */ .Hj)('enable-multi-release', env);
   if (typeof enableMultiRelease === 'boolean') {
     updatedEnv.ENABLE_MULTI_RELEASE = enableMultiRelease ? 'true' : 'false';
   }

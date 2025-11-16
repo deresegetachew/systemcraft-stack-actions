@@ -21,6 +21,8 @@ const DEFAULTS = {
 
 export async function main() {
   try {
+    console.log(`env variables`, { envVars: process.env });
+
     const inputs = {
       coverageCommand:
         getActionInput('coverage-command') || DEFAULTS.coverageCommand,

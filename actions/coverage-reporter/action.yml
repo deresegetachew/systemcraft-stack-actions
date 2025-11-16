@@ -27,7 +27,7 @@ inputs:
     default: '80'
   github-token:
     description: 'GitHub token for API access'
-    required: false
+    required: true
     default: ${{ github.token }}
   enable-diff:
     description: 'Enable coverage diff comparison against baseline'
