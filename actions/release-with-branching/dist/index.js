@@ -39,16 +39,18 @@ __nccwpck_require__.a(__webpack_module__, async (__webpack_handle_async_dependen
 function configureAuthEnv(env = {}) {
   const updatedEnv = { ...env };
 
-  const npmToken = (0,_libs_utils_index_js__WEBPACK_IMPORTED_MODULE_2__/* .getActionInput */ .lL)('node-auth-token', env);
+  const npmToken =
+    env.NODE_AUTH_TOKEN || (0,_libs_utils_index_js__WEBPACK_IMPORTED_MODULE_2__/* .getActionInput */ .lL)('NODE_AUTH_TOKEN', env);
 
   if (npmToken) {
     updatedEnv.NODE_AUTH_TOKEN = npmToken;
     process.env.NODE_AUTH_TOKEN = npmToken;
   } else {
-    throw new Error('❌ Missing npm token. Provide "npm-token" input.');
+    throw new Error('❌ Missing npm token. Provide "NODE_AUTH_TOKEN" input.');
   }
 
-  const githubToken = (0,_libs_utils_index_js__WEBPACK_IMPORTED_MODULE_2__/* .getActionInput */ .lL)('github-token', env);
+  const githubToken =
+    env.GITHUB_TOKEN || (0,_libs_utils_index_js__WEBPACK_IMPORTED_MODULE_2__/* .getActionInput */ .lL)('GITHUB_TOKEN', env);
 
   if (githubToken) {
     updatedEnv.GITHUB_TOKEN = githubToken;
@@ -57,12 +59,20 @@ function configureAuthEnv(env = {}) {
     console.warn('⚠️ No GitHub token provided. Git operations may fail.');
   }
 
-  const enableMultiRelease = (0,_libs_utils_index_js__WEBPACK_IMPORTED_MODULE_2__/* .getBooleanActionInput */ .Hj)(
-    'enable-multi-release',
-    env,
-  );
-  if (typeof enableMultiRelease === 'boolean') {
-    updatedEnv.ENABLE_MULTI_RELEASE = enableMultiRelease ? 'true' : 'false';
+  if (typeof env.ENABLE_MULTI_RELEASE !== 'undefined') {
+    const normalized =
+      String(env.ENABLE_MULTI_RELEASE).toLowerCase() === 'true'
+        ? 'true'
+        : 'false';
+    updatedEnv.ENABLE_MULTI_RELEASE = normalized;
+  } else {
+    const enableMultiRelease = (0,_libs_utils_index_js__WEBPACK_IMPORTED_MODULE_2__/* .getBooleanActionInput */ .Hj)(
+      'ENABLE_MULTI_RELEASE',
+      env,
+    );
+    if (typeof enableMultiRelease === 'boolean') {
+      updatedEnv.ENABLE_MULTI_RELEASE = enableMultiRelease ? 'true' : 'false';
+    }
   }
 
   return updatedEnv;

@@ -2,6 +2,7 @@ import { describe, it, mock, afterEach, beforeEach } from 'node:test';
 import assert from 'node:assert';
 
 import { ReleaseService } from './services/release.service.js';
+
 import { configureAuthEnv } from './index.js';
 
 describe('ReleaseService', () => {
@@ -276,17 +277,31 @@ describe('configureAuthEnv', () => {
 
   it('applies provided npm and github tokens to env and process', () => {
     const env = {
-      INPUT_NPM_TOKEN: 'npm-token',
-      INPUT_GITHUB_TOKEN: 'gh-token',
+      INPUT_NPM_TOKEN: 'NODE_AUTH_TOKEN',
+      INPUT_GITHUB_TOKEN: 'GITHUB_TOKEN',
       INPUT_ENABLE_MULTI_RELEASE: 'true',
     };
 
     const result = configureAuthEnv(env);
 
-    assert.strictEqual(result.NODE_AUTH_TOKEN, 'npm-token');
-    assert.strictEqual(process.env.NODE_AUTH_TOKEN, 'npm-token');
-    assert.strictEqual(process.env.GITHUB_TOKEN, 'gh-token');
+    assert.strictEqual(result.NODE_AUTH_TOKEN, 'NODE_AUTH_TOKEN');
+    assert.strictEqual(process.env.NODE_AUTH_TOKEN, 'NODE_AUTH_TOKEN');
+    assert.strictEqual(process.env.GITHUB_TOKEN, 'GITHUB_TOKEN');
     assert.strictEqual(result.ENABLE_MULTI_RELEASE, 'true');
+  });
+
+  it('uses existing env tokens when provided via env block', () => {
+    const env = {
+      NODE_AUTH_TOKEN: 'env-npm',
+      GITHUB_TOKEN: 'env-gh',
+      ENABLE_MULTI_RELEASE: 'false',
+    };
+
+    const result = configureAuthEnv(env);
+
+    assert.strictEqual(result.NODE_AUTH_TOKEN, 'env-npm');
+    assert.strictEqual(result.GITHUB_TOKEN, 'env-gh');
+    assert.strictEqual(result.ENABLE_MULTI_RELEASE, 'false');
   });
 
   it('throws when npm token missing', () => {

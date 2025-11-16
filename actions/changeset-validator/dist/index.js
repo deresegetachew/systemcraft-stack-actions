@@ -32631,8 +32631,7 @@ class ChangesetRequirementService {
 
 async function main() {
   try {
-    const skipLabel =
-      getActionInput('skip-label') || '[skip changeset check]';
+    const skipLabel = getActionInput('skip-label') || '[skip changeset check]';
     const context = github.context;
 
     console.debug(`Event type: ${context.eventName}`);

@@ -29091,8 +29091,7 @@ async function main() {
     const inputs = {
       coverageCommand:
         getActionInput('coverage-command') || DEFAULTS.coverageCommand,
-      coverageFile:
-        getActionInput('coverage-file') || DEFAULTS.coverageFile,
+      coverageFile: getActionInput('coverage-file') || DEFAULTS.coverageFile,
       coverageFormat:
         getActionInput('coverage-format') || DEFAULTS.coverageFormat,
       outputDir: getActionInput('output-dir') || DEFAULTS.outputDir,
@@ -29107,8 +29106,7 @@ async function main() {
       })(),
       githubToken:
         getActionInput('github-token') || process.env.GITHUB_TOKEN || '',
-      enableDiff:
-        getBooleanActionInput('enable-diff') ?? DEFAULTS.enableDiff,
+      enableDiff: getBooleanActionInput('enable-diff') ?? DEFAULTS.enableDiff,
       baselineArtifactName:
         getActionInput('baseline-artifact-name') ||
         DEFAULTS.baselineArtifactName,
