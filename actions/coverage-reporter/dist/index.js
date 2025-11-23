@@ -27610,6 +27610,7 @@ class GitUtil {
     this.githubToken = githubToken;
     this.fs = fsApi || external_node_fs_namespaceObject_0;
     this.refreshEnvContext();
+    this.lastArtifactHtmlUrl = null;
   }
 
   async getChangedFiles() {
@@ -27740,6 +27741,7 @@ class GitUtil {
   }
 
   async downloadLatestArtifact({ owner, repoName, artifactName }, outputPath) {
+    this.lastArtifactHtmlUrl = null;
     const headers = this.#buildRequestHeaders();
 
     // list artifacts
@@ -27771,6 +27773,8 @@ class GitUtil {
       repoName,
       artifactID: artifact.id,
     });
+    const serverUrl = process.env.GITHUB_SERVER_URL || 'https://github.com';
+    this.lastArtifactHtmlUrl = `${serverUrl}/${owner}/${repoName}/actions/artifacts/${artifact.id}`;
     const downloadResponse = await fetch(downloadURL, {
       headers,
       redirect: 'follow',
@@ -28322,30 +28326,30 @@ const external_node_os_namespaceObject = __WEBPACK_EXTERNAL_createRequire(import
 
 
 class EnvContext {
-    constructor(env = process.env) {
-        this.set(env);
-    }
+  constructor(env = process.env) {
+    this.set(env);
+  }
 
-    set(env) {
-        this.serverUrl = env.GITHUB_SERVER_URL || 'https://github.com';
-        this.repo = env.GITHUB_REPOSITORY || '';
-        this.runId = env.GITHUB_RUN_ID || '';
-        this.ref = env.GITHUB_REF || '';
-        this.eventPath = env.GITHUB_EVENT_PATH || '';
-        this.apiUrl = env.GITHUB_API_URL || 'https://api.github.com';
-        this.token = env.GITHUB_TOKEN || '';
-    }
+  set(env) {
+    this.serverUrl = env.GITHUB_SERVER_URL || 'https://github.com';
+    this.repo = env.GITHUB_REPOSITORY || '';
+    this.runId = env.GITHUB_RUN_ID || '';
+    this.ref = env.GITHUB_REF || '';
+    this.eventPath = env.GITHUB_EVENT_PATH || '';
+    this.apiUrl = env.GITHUB_API_URL || 'https://api.github.com';
+    this.token = env.GITHUB_TOKEN || '';
+  }
 
-    refresh() {
-        this.set(process.env);
-    }
+  refresh() {
+    this.set(process.env);
+  }
 
-    getArtifactsUrl() {
-        if (!this.repo || !this.runId) {
-            return null;
-        }
-        return `${this.serverUrl}/${this.repo}/actions/runs/${this.runId}`;
+  getArtifactsUrl() {
+    if (!this.repo || !this.runId) {
+      return null;
     }
+    return `${this.serverUrl}/${this.repo}/actions/runs/${this.runId}`;
+  }
 }
 
 class CoverageReporterService {
@@ -28355,6 +28359,7 @@ class CoverageReporterService {
         this.git = gitUtil || new GitUtil(this.shell); // Initialize with no token, will be set in run method
         this.tempDir = external_node_path_namespaceObject.join(external_node_os_namespaceObject.tmpdir(), 'coverage-baseline');
         this.env = new EnvContext();
+        this.baselineArtifactsUrl = null;
     }
 
   static create() {
@@ -28625,10 +28630,11 @@ class CoverageReporterService {
             inputs.minimumCoverage,
             summary.baseline,
             this.getArtifactsUrl(),
+            this.baselineArtifactsUrl,
         );
-    const reportPath = external_node_path_namespaceObject.join(inputs.outputDir, 'coverage-report.md');
-    this.fs.writeFileSync(reportPath, markdownReport);
-    console.debug(`✅ Coverage report saved to ${reportPath}`);
+        const reportPath = external_node_path_namespaceObject.join(inputs.outputDir, 'coverage-report.md');
+        this.fs.writeFileSync(reportPath, markdownReport);
+        console.debug(`✅ Coverage report saved to ${reportPath}`);
 
     return { summaryPath, reportPath, markdownReport };
   }
@@ -28818,6 +28824,7 @@ class CoverageReporterService {
     minimumCoverage,
     baselineCoverage = null,
     artifactsUrl = null,
+    baselineArtifactsUrl = null,
   ) {
     // Handle per-package coverage reports
     if (coverage.type === 'packages') {
@@ -28826,6 +28833,7 @@ class CoverageReporterService {
         minimumCoverage,
         baselineCoverage,
         artifactsUrl,
+        baselineArtifactsUrl,
       );
     }
 
@@ -28927,6 +28935,7 @@ class CoverageReporterService {
     minimumCoverage,
     baselineCoverage = null,
     artifactsUrl = null,
+    baselineArtifactsUrl = null,
   ) {
     const getStatus = (percentage) =>
       percentage >= minimumCoverage ? '✅ Pass' : '❌ Fail';
@@ -28945,6 +28954,11 @@ class CoverageReporterService {
       return ` (${sign}${diff.toFixed(2)}%)`;
     };
 
+    const baselineHeaderLink =
+      baselineArtifactsUrl && baselineCoverage
+        ? `[Baseline](${baselineArtifactsUrl})`
+        : 'Baseline';
+
     let report = `## 📊 Coverage Report by Package\n\n`;
 
     // Package-by-package breakdown
@@ -28952,7 +28966,7 @@ class CoverageReporterService {
       const { package: pkgName, coverage, baseline } = pkg;
 
       report += `#### 📦 ${pkgName}\n`;
-      report += `| Metric | Current | ${baseline ? 'Baseline | Change |' : ''} Status |\n`;
+      report += `| Metric | Current | ${baseline ? `${baselineHeaderLink} | Change |` : ''} Status |\n`;
       report += `|--------|---------|${baseline ? '---------|--------|' : ''}--------|\n`;
 
       const metrics = [
@@ -28970,13 +28984,7 @@ class CoverageReporterService {
 
         if (baseline) {
           const baselineDisplay = baselineValue?.toFixed(2) || 'N/A';
-          const baselineCell =
-            artifactsUrl &&
-            baselineValue !== undefined &&
-            baselineValue !== null
-              ? `[${baselineDisplay}%](${artifactsUrl})`
-              : `${baselineDisplay}%`;
-          report += `| **${metric.label}** | ${current.toFixed(2)}% | ${baselineCell} | ${change}${diff} | ${getStatus(current)} |\n`;
+          report += `| **${metric.label}** | ${current.toFixed(2)}% | ${baselineDisplay}% | ${change}${diff} | ${getStatus(current)} |\n`;
         } else {
           report += `| **${metric.label}** | ${current.toFixed(2)}% | ${getStatus(current)} |\n`;
         }
@@ -29291,20 +29299,22 @@ class CoverageReporterService {
     }
 
     try {
-      if (coverageResult.type === 'summary') {
-        // Handle standard coverage-summary.json
-        const baselineData = JSON.parse(
-          this.fs.readFileSync(coverageResult.path, 'utf8'),
-        );
-        console.debug('✅ Baseline coverage loaded from summary file');
-        return (
-          baselineData.details ||
-          this.parseCoverageFromSummary({ total: baselineData })
-        );
-      } else if (coverageResult.type === 'packages') {
-        // Handle package-specific coverage.json files
-        return this.buildPackagesCoverageDetail(coverageResult.files);
-      }
+        if (coverageResult.type === 'summary') {
+            // Handle standard coverage-summary.json
+            const baselineData = JSON.parse(
+                this.fs.readFileSync(coverageResult.path, 'utf8'),
+            );
+            console.debug('✅ Baseline coverage loaded from summary file');
+            this.baselineArtifactsUrl = this.git.lastArtifactHtmlUrl;
+            return (
+                baselineData.details ||
+                this.parseCoverageFromSummary({ total: baselineData })
+            );
+        } else if (coverageResult.type === 'packages') {
+            // Handle package-specific coverage.json files
+            this.baselineArtifactsUrl = this.git.lastArtifactHtmlUrl;
+            return this.buildPackagesCoverageDetail(coverageResult.files);
+        }
     } catch (error) {
       console.warn(`⚠️ Failed to parse baseline coverage: ${error.message}`);
       return null;
@@ -29353,53 +29363,53 @@ class CoverageReporterService {
     this.fs.rmSync(this.tempDir, { recursive: true, force: true });
   }
 
-    getPullRequestNumberFromEnv() {
-        this.env.refresh();
-        try {
-            const eventPath = this.env.eventPath;
-            if (eventPath && this.fs.existsSync(eventPath)) {
-                const eventData = JSON.parse(this.fs.readFileSync(eventPath, 'utf8'));
-                if (eventData?.pull_request?.number) {
-                    return eventData.pull_request.number;
-                }
-                if (eventData?.issue?.pull_request?.url && eventData?.issue?.number) {
-                    return eventData.issue.number;
-                }
-            }
-        } catch (error) {
-            console.warn(`⚠️ Failed to parse GITHUB_EVENT_PATH: ${error.message}`);
+  getPullRequestNumberFromEnv() {
+    this.env.refresh();
+    try {
+      const eventPath = this.env.eventPath;
+      if (eventPath && this.fs.existsSync(eventPath)) {
+        const eventData = JSON.parse(this.fs.readFileSync(eventPath, 'utf8'));
+        if (eventData?.pull_request?.number) {
+          return eventData.pull_request.number;
         }
-
-        const ref = this.env.ref || '';
-        const match = ref.match(/refs\/pull\/(\d+)\/merge/i);
-        if (match) {
-            return Number(match[1]);
+        if (eventData?.issue?.pull_request?.url && eventData?.issue?.number) {
+          return eventData.issue.number;
         }
-
-        return null;
+      }
+    } catch (error) {
+      console.warn(`⚠️ Failed to parse GITHUB_EVENT_PATH: ${error.message}`);
     }
 
-    getArtifactsUrl() {
-        this.env.refresh();
-        return this.env.getArtifactsUrl();
+    const ref = this.env.ref || '';
+    const match = ref.match(/refs\/pull\/(\d+)\/merge/i);
+    if (match) {
+      return Number(match[1]);
     }
 
-    async postPrCommentIfAvailable(markdownBody) {
-        this.env.refresh();
-        const prNumber = this.getPullRequestNumberFromEnv();
-        const repoInfo = this.git.parseRepository(this.env.repo);
-        const token = this.git.githubToken || this.env.token;
+    return null;
+  }
 
-        if (!prNumber || !repoInfo || !token) {
-            console.debug(
-                '💬 Skipping PR comment: missing PR number, repo info, or GitHub token',
-            );
-            return;
-        }
+  getArtifactsUrl() {
+    this.env.refresh();
+    return this.env.getArtifactsUrl();
+  }
+
+  async postPrCommentIfAvailable(markdownBody) {
+    this.env.refresh();
+    const prNumber = this.getPullRequestNumberFromEnv();
+    const repoInfo = this.git.parseRepository(this.env.repo);
+    const token = this.git.githubToken || this.env.token;
+
+    if (!prNumber || !repoInfo || !token) {
+      console.debug(
+        '💬 Skipping PR comment: missing PR number, repo info, or GitHub token',
+      );
+      return;
+    }
 
     const marker = '<!-- coverage-reporter -->';
     const body = `${marker}\n${markdownBody}`;
-        const apiUrl = this.env.apiUrl || 'https://api.github.com';
+    const apiUrl = this.env.apiUrl || 'https://api.github.com';
     const commentsUrl = `${apiUrl}/repos/${repoInfo.owner}/${repoInfo.repoName}/issues/${prNumber}/comments`;
     const headers = {
       Authorization: `Bearer ${token}`,
@@ -29457,16 +29467,16 @@ class CoverageReporterService {
     }
   }
 
-    async getBaselineCoverage(inputs) {
-        if (!this.canDownloadBaseLine(inputs)) {
-            return null;
-        }
+  async getBaselineCoverage(inputs) {
+    if (!this.canDownloadBaseLine(inputs)) {
+      return null;
+    }
 
-        this.env.refresh();
-        const repoInfo = this.git.parseRepository(this.env.repo);
-        if (!repoInfo) {
-            return null;
-        }
+    this.env.refresh();
+    const repoInfo = this.git.parseRepository(this.env.repo);
+    if (!repoInfo) {
+      return null;
+    }
 
     let baselineCoverage = null;
 

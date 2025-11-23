@@ -298,6 +298,7 @@ class GitUtil {
     this.githubToken = githubToken;
     this.fs = fsApi || fs;
     this.refreshEnvContext();
+    this.lastArtifactHtmlUrl = null;
   }
 
   async getChangedFiles() {
@@ -428,6 +429,7 @@ class GitUtil {
   }
 
   async downloadLatestArtifact({ owner, repoName, artifactName }, outputPath) {
+    this.lastArtifactHtmlUrl = null;
     const headers = this.#buildRequestHeaders();
 
     // list artifacts
@@ -459,6 +461,8 @@ class GitUtil {
       repoName,
       artifactID: artifact.id,
     });
+    const serverUrl = process.env.GITHUB_SERVER_URL || 'https://github.com';
+    this.lastArtifactHtmlUrl = `${serverUrl}/${owner}/${repoName}/actions/artifacts/${artifact.id}`;
     const downloadResponse = await fetch(downloadURL, {
       headers,
       redirect: 'follow',

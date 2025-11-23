@@ -38,6 +38,7 @@ export class CoverageReporterService {
     this.git = gitUtil || new GitUtil(this.shell); // Initialize with no token, will be set in run method
     this.tempDir = path.join(os.tmpdir(), 'coverage-baseline');
     this.env = new EnvContext();
+    this.baselineArtifactsUrl = null;
   }
 
   static create() {
@@ -308,6 +309,7 @@ export class CoverageReporterService {
       inputs.minimumCoverage,
       summary.baseline,
       this.getArtifactsUrl(),
+      this.baselineArtifactsUrl,
     );
     const reportPath = path.join(inputs.outputDir, 'coverage-report.md');
     this.fs.writeFileSync(reportPath, markdownReport);
@@ -501,6 +503,7 @@ export class CoverageReporterService {
     minimumCoverage,
     baselineCoverage = null,
     artifactsUrl = null,
+    baselineArtifactsUrl = null,
   ) {
     // Handle per-package coverage reports
     if (coverage.type === 'packages') {
@@ -509,6 +512,7 @@ export class CoverageReporterService {
         minimumCoverage,
         baselineCoverage,
         artifactsUrl,
+        baselineArtifactsUrl,
       );
     }
 
@@ -610,6 +614,7 @@ export class CoverageReporterService {
     minimumCoverage,
     baselineCoverage = null,
     artifactsUrl = null,
+    baselineArtifactsUrl = null,
   ) {
     const getStatus = (percentage) =>
       percentage >= minimumCoverage ? '✅ Pass' : '❌ Fail';
@@ -628,6 +633,11 @@ export class CoverageReporterService {
       return ` (${sign}${diff.toFixed(2)}%)`;
     };
 
+    const baselineHeaderLink =
+      baselineArtifactsUrl && baselineCoverage
+        ? `[Baseline](${baselineArtifactsUrl})`
+        : 'Baseline';
+
     let report = `## 📊 Coverage Report by Package\n\n`;
 
     // Package-by-package breakdown
@@ -635,7 +645,7 @@ export class CoverageReporterService {
       const { package: pkgName, coverage, baseline } = pkg;
 
       report += `#### 📦 ${pkgName}\n`;
-      report += `| Metric | Current | ${baseline ? 'Baseline | Change |' : ''} Status |\n`;
+      report += `| Metric | Current | ${baseline ? `${baselineHeaderLink} | Change |` : ''} Status |\n`;
       report += `|--------|---------|${baseline ? '---------|--------|' : ''}--------|\n`;
 
       const metrics = [
@@ -653,13 +663,7 @@ export class CoverageReporterService {
 
         if (baseline) {
           const baselineDisplay = baselineValue?.toFixed(2) || 'N/A';
-          const baselineCell =
-            artifactsUrl &&
-            baselineValue !== undefined &&
-            baselineValue !== null
-              ? `[${baselineDisplay}%](${artifactsUrl})`
-              : `${baselineDisplay}%`;
-          report += `| **${metric.label}** | ${current.toFixed(2)}% | ${baselineCell} | ${change}${diff} | ${getStatus(current)} |\n`;
+          report += `| **${metric.label}** | ${current.toFixed(2)}% | ${baselineDisplay}% | ${change}${diff} | ${getStatus(current)} |\n`;
         } else {
           report += `| **${metric.label}** | ${current.toFixed(2)}% | ${getStatus(current)} |\n`;
         }
@@ -980,12 +984,14 @@ export class CoverageReporterService {
           this.fs.readFileSync(coverageResult.path, 'utf8'),
         );
         console.debug('✅ Baseline coverage loaded from summary file');
+        this.baselineArtifactsUrl = this.git.lastArtifactHtmlUrl;
         return (
           baselineData.details ||
           this.parseCoverageFromSummary({ total: baselineData })
         );
       } else if (coverageResult.type === 'packages') {
         // Handle package-specific coverage.json files
+        this.baselineArtifactsUrl = this.git.lastArtifactHtmlUrl;
         return this.buildPackagesCoverageDetail(coverageResult.files);
       }
     } catch (error) {
