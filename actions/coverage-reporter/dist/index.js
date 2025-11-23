@@ -28898,42 +28898,11 @@ class CoverageReporterService {
     const formatDiff = (current, baseline) => {
       if (baseline === null || baseline === undefined) return '';
       const diff = current - baseline;
-      if (Math.abs(diff) < 0.01) return '';
       const sign = diff > 0 ? '+' : '';
       return ` (${sign}${diff.toFixed(2)}%)`;
     };
 
-    const aggregateBaseline = summary.baseline || baselineCoverage || null;
-    const aggregateCoverage = summary.coverage || null;
-
     let report = `## 📊 Coverage Report by Package\n\n`;
-
-    if (aggregateCoverage) {
-      report += `| Metric | Current | ${aggregateBaseline ? 'Baseline | Change |' : ''} Status |\n`;
-      report += `|--------|---------|${aggregateBaseline ? '---------|--------|' : ''}--------|\n`;
-
-      const metrics = [
-        { key: 'statements', label: 'Statements' },
-        { key: 'branches', label: 'Branches' },
-        { key: 'functions', label: 'Functions' },
-        { key: 'lines', label: 'Lines' },
-      ];
-
-      for (const metric of metrics) {
-        const current = aggregateCoverage[metric.key];
-        const baseline = aggregateBaseline?.[metric.key];
-        const diff = getDiffIcon(current, baseline);
-        const change = formatDiff(current, baseline);
-
-        if (aggregateBaseline) {
-          report += `| **${metric.label}** | ${current.toFixed(2)}% | ${baseline?.toFixed(2) || 'N/A'}% | ${change}${diff} | ${getStatus(current)} |\n`;
-        } else {
-          report += `| **${metric.label}** | ${current.toFixed(2)}% | ${getStatus(current)} |\n`;
-        }
-      }
-
-      report += '\n';
-    }
 
     // Package-by-package breakdown
     for (const pkg of summary.packages) {
@@ -29258,16 +29227,17 @@ class CoverageReporterService {
     for (const {
       package: pkgName,
       path: filePath,
-      coverage,
-    } of filesToProcess) {
+        coverage,
+      } of filesToProcess) {
       try {
         const pkgCoverage =
           coverage || JSON.parse(this.fs.readFileSync(filePath, 'utf8'));
-        console.debug(`📦 Processing coverage for ${pkgName}`);
+        const displayName = this.desanitizePackageName(pkgName);
+        console.debug(`📦 Processing coverage for ${displayName}`);
 
         // Extract coverage percentages from the coverage JSON (c8/istanbul format)
         const parsedCoverage = this.parseCoverageFromSummary(pkgCoverage);
-        packages.push({ package: pkgName, coverage: parsedCoverage });
+        packages.push({ package: displayName, coverage: parsedCoverage });
       } catch (error) {
         console.warn(
           `⚠️ Failed to parse coverage for ${pkgName}: ${error.message}`,
