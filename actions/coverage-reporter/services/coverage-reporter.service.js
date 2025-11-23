@@ -26,26 +26,26 @@ export class CoverageReporterService {
     this.ensureDirectory(normalizedInputs.outputDir);
 
     // Ensure Git client always has the latest token (from inputs or env)
-    this.git.githubToken =
-      normalizedInputs.githubToken ||
-      process.env.GITHUB_TOKEN ||
-      this.git.githubToken;
+    // this.git.githubToken =
+    //     normalizedInputs.githubToken ||
+    //     process.env.GITHUB_TOKEN ||
+    //     this.git.githubToken;
 
     const baselineCoverage = await this.getBaselineCoverage(normalizedInputs);
-    const coverage = this.getCurrentCoverage(normalizedInputs);
+    const currentCoverage = this.getCurrentCoverage(normalizedInputs);
 
     console.debug(
       `Baseline data:, ${JSON.stringify(baselineCoverage, null, 2)}`,
     );
-    console.debug(`Coverage data: ${JSON.stringify(coverage, null, 2)}`);
+    console.debug(`Coverage data: ${JSON.stringify(currentCoverage, null, 2)}`);
 
     const summary = this.createSummary(
-      coverage,
+      currentCoverage,
       baselineCoverage,
       normalizedInputs.minimumCoverage,
     );
 
-    this.persistSummaryFiles(summary, coverage, normalizedInputs);
+    this.persistSummaryFiles(summary, currentCoverage, normalizedInputs);
     this.copyHtmlReports(normalizedInputs.outputDir);
     this.logFinalStats(summary, baselineCoverage);
 
@@ -299,13 +299,13 @@ export class CoverageReporterService {
   }
 
   parseCoverageFromSummary(summary) {
-    console.debug(`parsing summary coverage ${{ summary }}`);
+    console.debug(`parsing summary coverage ${JSON.stringify({ summary })}`);
     const { total } = summary;
     return {
-      statements: total.statements.pct,
-      branches: total.branches.pct,
-      functions: total.functions.pct,
-      lines: total.lines.pct,
+      statements: total.statements.pct ?? 0,
+      branches: total.branches.pct ?? 0,
+      functions: total.functions.pct ?? 0,
+      lines: total.lines.pct ?? 0,
     };
   }
 
@@ -635,7 +635,7 @@ export class CoverageReporterService {
     return null;
   }
 
-  shouldDownloadBaseline(inputs) {
+  canDownloadBaseLine(inputs) {
     if (!inputs.enableDiff || !inputs.baselineArtifactName) {
       console.debug(
         '📊 Baseline comparison disabled or no artifact name provided',
@@ -828,7 +828,7 @@ export class CoverageReporterService {
   }
 
   async getBaselineCoverage(inputs) {
-    if (!this.shouldDownloadBaseline(inputs)) {
+    if (!this.canDownloadBaseLine(inputs)) {
       return null;
     }
 
