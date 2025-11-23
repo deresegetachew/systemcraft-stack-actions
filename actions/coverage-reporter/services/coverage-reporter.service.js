@@ -26,10 +26,10 @@ export class CoverageReporterService {
     this.ensureDirectory(normalizedInputs.outputDir);
 
     // Ensure Git client always has the latest token (from inputs or env)
-    // this.git.githubToken =
-    //     normalizedInputs.githubToken ||
-    //     process.env.GITHUB_TOKEN ||
-    //     this.git.githubToken;
+    this.git.githubToken =
+      normalizedInputs.githubToken ||
+      process.env.GITHUB_TOKEN ||
+      this.git.githubToken;
 
     const baselineCoverage = await this.getBaselineCoverage(normalizedInputs);
     const currentCoverage = this.getCurrentCoverage(normalizedInputs);
