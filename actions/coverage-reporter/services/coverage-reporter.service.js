@@ -413,6 +413,15 @@ export class CoverageReporterService {
     };
   }
 
+  desanitizePackageName(name) {
+    if (!name || typeof name !== 'string') return name;
+    let result = name;
+    if (result.startsWith('at-')) {
+      result = `@${result.slice(3)}`;
+    }
+    return result.replaceAll('__', '/');
+  }
+
   aggregateCoverageFromPackages(packages = []) {
     if (!Array.isArray(packages) || packages.length === 0) {
       return { statements: 0, branches: 0, functions: 0, lines: 0 };
