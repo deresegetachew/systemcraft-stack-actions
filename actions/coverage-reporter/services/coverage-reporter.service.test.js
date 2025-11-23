@@ -141,7 +141,7 @@ All files          |   85.5 |    78.2 |   92.1 |   87.3 |
       assert(result.includes('📊 Coverage Report'));
       assert(result.includes('85.50%'));
       assert(result.includes('88.20%'));
-      assert(result.includes('✅'));
+      assert(result.includes('✅ Pass'));
     });
 
     it('should show warning for low coverage', () => {
@@ -155,7 +155,61 @@ All files          |   85.5 |    78.2 |   92.1 |   87.3 |
       const result = service.generateMarkdownReport(coverage, 80);
 
       assert(result.includes('⚠️ **Coverage is below minimum'));
-      assert(result.includes('❌'));
+      assert(result.includes('❌ Fail'));
+    });
+  });
+
+  describe('generatePackageMarkdownReport', () => {
+    it('should render per-package table with baseline and diffs', () => {
+      const summary = {
+        type: 'packages',
+        packages: [
+          {
+            package: '@scope/pkg-a',
+            coverage: {
+              statements: 90,
+              branches: 80,
+              functions: 85,
+              lines: 88,
+            },
+            baseline: {
+              statements: 88,
+              branches: 75,
+              functions: 82,
+              lines: 87,
+            },
+          },
+          {
+            package: '@scope/pkg-b',
+            coverage: {
+              statements: 70,
+              branches: 65,
+              functions: 60,
+              lines: 68,
+            },
+            baseline: {
+              statements: 60,
+              branches: 60,
+              functions: 55,
+              lines: 58,
+            },
+          },
+        ],
+      };
+
+      const result = service.generatePackageMarkdownReport(
+        summary,
+        75,
+        summary,
+      );
+
+      assert(result.includes('Coverage Report by Package'));
+      assert(result.includes('@scope/pkg-a'));
+      assert(result.includes('@scope/pkg-b'));
+      assert(result.includes('90.00%'));
+      assert(result.includes('75.00%'));
+      assert(result.includes('✅ Pass'));
+      assert(result.includes('❌ Fail'));
     });
   });
 
