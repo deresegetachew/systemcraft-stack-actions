@@ -239,6 +239,14 @@ All files          |   85.5 |    78.2 |   92.1 |   87.3 |
       process.env.GITHUB_RUN_ID = original.run;
     });
 
+    it('should return null artifacts URL when env missing', () => {
+      delete process.env.GITHUB_SERVER_URL;
+      delete process.env.GITHUB_REPOSITORY;
+      delete process.env.GITHUB_RUN_ID;
+      const localService = new CoverageReporterService(mockShell, fs);
+      assert.strictEqual(localService.getArtifactsUrl(), null);
+    });
+
     it('should read PR number from event payload', () => {
       const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'cov-event-'));
       const eventPath = path.join(tmpDir, 'event.json');
@@ -253,6 +261,14 @@ All files          |   85.5 |    78.2 |   92.1 |   87.3 |
       assert.strictEqual(prNumber, 42);
       fs.rmSync(tmpDir, { recursive: true, force: true });
       delete process.env.GITHUB_EVENT_PATH;
+    });
+
+    it('should read PR number from ref when event missing', () => {
+      delete process.env.GITHUB_EVENT_PATH;
+      process.env.GITHUB_REF = 'refs/pull/123/merge';
+      const prNumber = service.getPullRequestNumberFromEnv();
+      assert.strictEqual(prNumber, 123);
+      delete process.env.GITHUB_REF;
     });
 
     it('should upsert PR comment when data is available', async () => {
@@ -289,6 +305,104 @@ All files          |   85.5 |    78.2 |   92.1 |   87.3 |
       delete process.env.GITHUB_SERVER_URL;
       delete process.env.GITHUB_API_URL;
       delete global.fetch;
+    });
+
+    it('should skip PR comment when data is missing', async () => {
+      delete process.env.GITHUB_EVENT_PATH;
+      delete process.env.GITHUB_REPOSITORY;
+      delete process.env.GITHUB_TOKEN;
+      let called = false;
+      global.fetch = () => {
+        called = true;
+      };
+      await service.postPrCommentIfAvailable('body');
+      assert.strictEqual(called, false);
+      delete global.fetch;
+    });
+
+    it('should tolerate PR comment post failures', async () => {
+      const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'cov-event-'));
+      const eventPath = path.join(tmpDir, 'event.json');
+      fs.writeFileSync(
+        eventPath,
+        JSON.stringify({ pull_request: { number: 9 } }),
+      );
+      process.env.GITHUB_EVENT_PATH = eventPath;
+      process.env.GITHUB_REPOSITORY = 'owner/repo';
+      process.env.GITHUB_TOKEN = 't0k';
+      global.fetch = async () => {
+        throw new Error('boom');
+      };
+
+      await service.postPrCommentIfAvailable('body'); // should not throw
+
+      fs.rmSync(tmpDir, { recursive: true, force: true });
+      delete process.env.GITHUB_EVENT_PATH;
+      delete process.env.GITHUB_REPOSITORY;
+      delete process.env.GITHUB_TOKEN;
+      delete global.fetch;
+    });
+  });
+
+  describe('io helpers', () => {
+    it('should load current package coverage from packages/coverage path with package name', () => {
+      const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'cov-load-'));
+      const originalCwd = process.cwd();
+      process.chdir(tmpDir);
+
+      const pkgDir = path.join(tmpDir, 'packages', 'lib-one', 'coverage');
+      fs.mkdirSync(pkgDir, { recursive: true });
+      fs.writeFileSync(
+        path.join(tmpDir, 'packages', 'lib-one', 'package.json'),
+        JSON.stringify({ name: '@scope/lib-one' }),
+      );
+      fs.writeFileSync(
+        path.join(pkgDir, 'coverage-summary.json'),
+        JSON.stringify({
+          total: {
+            statements: { pct: 80 },
+            branches: { pct: 70 },
+            functions: { pct: 75 },
+            lines: { pct: 78 },
+          },
+        }),
+      );
+
+      const localService = new CoverageReporterService(mockShell, fs);
+      const result = localService.loadCurrentCoverage(
+        'coverage-artifacts',
+        'coverage-summary.json',
+      );
+
+      assert.strictEqual(result.type, 'packages');
+      assert.strictEqual(result.files[0].package, '@scope/lib-one');
+      process.chdir(originalCwd);
+      fs.rmSync(tmpDir, { recursive: true, force: true });
+    });
+
+    it('should build package coverage detail and desanitize names', () => {
+      const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'cov-pack-'));
+      const coveragePath = path.join(tmpDir, 'coverage.json');
+      fs.writeFileSync(
+        coveragePath,
+        JSON.stringify({
+          total: {
+            statements: { pct: 90 },
+            branches: { pct: 80 },
+            functions: { pct: 85 },
+            lines: { pct: 88 },
+          },
+        }),
+      );
+
+      const localService = new CoverageReporterService(mockShell, fs);
+      const detail = localService.buildPackagesCoverageDetail([
+        { package: 'at-scope__pkg', path: coveragePath },
+      ]);
+
+      assert.strictEqual(detail.packages[0].package, '@scope/pkg');
+      assert.strictEqual(detail.packages[0].coverage.statements, 90);
+      fs.rmSync(tmpDir, { recursive: true, force: true });
     });
   });
 
@@ -358,6 +472,71 @@ All files          |   85.5 |    78.2 |   92.1 |   87.3 |
       assert.deepStrictEqual(result.baselineCoverage, baselineCoverage);
       assert.deepStrictEqual(result.summary.baseline, baselineCoverage);
       assert.strictEqual(result.status, 'pass');
+    });
+
+    it('should load baseline coverage via git artifact when available', async () => {
+      process.env.GITHUB_REPOSITORY = 'owner/repo';
+      const mockGit = {
+        githubToken: 't',
+        parseRepository: () => ({ owner: 'owner', repoName: 'repo' }),
+        downloadLatestArtifact: async () => Buffer.from('zip'),
+        lastArtifactHtmlUrl: 'http://artifact/url',
+      };
+
+      const localService = new CoverageReporterService(
+        mockShell,
+        mockFs,
+        mockGit,
+      );
+      localService.prepareBaselineWorkspace = () => '/tmp/baseline';
+      localService.writeArtifactZip = () => {};
+      localService.unpackBaselineZip = () => true;
+      localService.cleanupBaselineWorkspace = () => {};
+      localService.readBaselineCoverage = () => {
+        localService.baselineArtifactsUrl = mockGit.lastArtifactHtmlUrl;
+        return { statements: 10, branches: 20, functions: 30, lines: 40 };
+      };
+
+      const result = await localService.getBaselineCoverage({
+        enableDiff: true,
+        baselineArtifactName: 'artifact',
+        coverageFile: 'coverage-summary.json',
+        githubToken: 't',
+      });
+
+      assert.deepStrictEqual(result, {
+        statements: 10,
+        branches: 20,
+        functions: 30,
+        lines: 40,
+      });
+      assert.strictEqual(
+        localService.baselineArtifactsUrl,
+        'http://artifact/url',
+      );
+      delete process.env.GITHUB_REPOSITORY;
+    });
+
+    it('should return null baseline when artifact missing', async () => {
+      process.env.GITHUB_REPOSITORY = 'owner/repo';
+      const mockGit = {
+        githubToken: 't',
+        parseRepository: () => ({ owner: 'owner', repoName: 'repo' }),
+        downloadLatestArtifact: async () => null,
+      };
+      const localService = new CoverageReporterService(
+        mockShell,
+        mockFs,
+        mockGit,
+      );
+      const result = await localService.getBaselineCoverage({
+        enableDiff: true,
+        baselineArtifactName: 'artifact',
+        coverageFile: 'coverage-summary.json',
+        githubToken: 't',
+      });
+      assert.strictEqual(result, null);
+      delete process.env.GITHUB_REPOSITORY;
     });
   });
 

@@ -28353,14 +28353,14 @@ class EnvContext {
 }
 
 class CoverageReporterService {
-    constructor(shellUtil, fsApi, gitUtil) {
-        this.shell = shellUtil || new ShellUtil();
-        this.fs = fsApi || external_node_fs_namespaceObject_0;
-        this.git = gitUtil || new GitUtil(this.shell); // Initialize with no token, will be set in run method
-        this.tempDir = external_node_path_namespaceObject.join(external_node_os_namespaceObject.tmpdir(), 'coverage-baseline');
-        this.env = new EnvContext();
-        this.baselineArtifactsUrl = null;
-    }
+  constructor(shellUtil, fsApi, gitUtil) {
+    this.shell = shellUtil || new ShellUtil();
+    this.fs = fsApi || external_node_fs_namespaceObject_0;
+    this.git = gitUtil || new GitUtil(this.shell); // Initialize with no token, will be set in run method
+    this.tempDir = external_node_path_namespaceObject.join(external_node_os_namespaceObject.tmpdir(), 'coverage-baseline');
+    this.env = new EnvContext();
+    this.baselineArtifactsUrl = null;
+  }
 
   static create() {
     return new CoverageReporterService();
@@ -28616,25 +28616,25 @@ class CoverageReporterService {
     return null;
   }
 
-    async persistSummaryFiles(summary, coverage, inputs) {
-        const summaryFileName = external_node_path_namespaceObject.basename(inputs.coverageFile);
-        const summaryPath = external_node_path_namespaceObject.join(inputs.outputDir, summaryFileName);
-        this.fs.writeFileSync(summaryPath, JSON.stringify(summary, null, 2));
+  async persistSummaryFiles(summary, coverage, inputs) {
+    const summaryFileName = external_node_path_namespaceObject.basename(inputs.coverageFile);
+    const summaryPath = external_node_path_namespaceObject.join(inputs.outputDir, summaryFileName);
+    this.fs.writeFileSync(summaryPath, JSON.stringify(summary, null, 2));
 
-        if (!inputs.enablePrComments) {
-            return { summaryPath, reportPath: null, markdownReport: null };
-        }
+    if (!inputs.enablePrComments) {
+      return { summaryPath, reportPath: null, markdownReport: null };
+    }
 
-        const markdownReport = this.generateMarkdownReport(
-            summary.type === 'packages' ? summary : coverage,
-            inputs.minimumCoverage,
-            summary.baseline,
-            this.getArtifactsUrl(),
-            this.baselineArtifactsUrl,
-        );
-        const reportPath = external_node_path_namespaceObject.join(inputs.outputDir, 'coverage-report.md');
-        this.fs.writeFileSync(reportPath, markdownReport);
-        console.debug(`✅ Coverage report saved to ${reportPath}`);
+    const markdownReport = this.generateMarkdownReport(
+      summary.type === 'packages' ? summary : coverage,
+      inputs.minimumCoverage,
+      summary.baseline,
+      this.getArtifactsUrl(),
+      this.baselineArtifactsUrl,
+    );
+    const reportPath = external_node_path_namespaceObject.join(inputs.outputDir, 'coverage-report.md');
+    this.fs.writeFileSync(reportPath, markdownReport);
+    console.debug(`✅ Coverage report saved to ${reportPath}`);
 
     return { summaryPath, reportPath, markdownReport };
   }
@@ -29299,22 +29299,22 @@ class CoverageReporterService {
     }
 
     try {
-        if (coverageResult.type === 'summary') {
-            // Handle standard coverage-summary.json
-            const baselineData = JSON.parse(
-                this.fs.readFileSync(coverageResult.path, 'utf8'),
-            );
-            console.debug('✅ Baseline coverage loaded from summary file');
-            this.baselineArtifactsUrl = this.git.lastArtifactHtmlUrl;
-            return (
-                baselineData.details ||
-                this.parseCoverageFromSummary({ total: baselineData })
-            );
-        } else if (coverageResult.type === 'packages') {
-            // Handle package-specific coverage.json files
-            this.baselineArtifactsUrl = this.git.lastArtifactHtmlUrl;
-            return this.buildPackagesCoverageDetail(coverageResult.files);
-        }
+      if (coverageResult.type === 'summary') {
+        // Handle standard coverage-summary.json
+        const baselineData = JSON.parse(
+          this.fs.readFileSync(coverageResult.path, 'utf8'),
+        );
+        console.debug('✅ Baseline coverage loaded from summary file');
+        this.baselineArtifactsUrl = this.git.lastArtifactHtmlUrl;
+        return (
+          baselineData.details ||
+          this.parseCoverageFromSummary({ total: baselineData })
+        );
+      } else if (coverageResult.type === 'packages') {
+        // Handle package-specific coverage.json files
+        this.baselineArtifactsUrl = this.git.lastArtifactHtmlUrl;
+        return this.buildPackagesCoverageDetail(coverageResult.files);
+      }
     } catch (error) {
       console.warn(`⚠️ Failed to parse baseline coverage: ${error.message}`);
       return null;
