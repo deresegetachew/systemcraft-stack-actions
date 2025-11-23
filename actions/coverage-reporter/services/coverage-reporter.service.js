@@ -734,6 +734,52 @@ export class CoverageReporterService {
         return { type: 'packages', files: packagesWithCoverage };
       }
 
+      // Fallback: search monorepo packages/* for coverage files
+      const packagesDir = 'packages';
+      if (this.fs.existsSync(packagesDir)) {
+        const packageDirs = this.fs
+          .readdirSync(packagesDir)
+          .filter((dir) =>
+            this.fs.statSync(path.join(packagesDir, dir)).isDirectory(),
+          );
+
+        for (const dir of packageDirs) {
+          const candidatePaths = [
+            path.join(packagesDir, dir, coverageFile),
+            path.join(packagesDir, dir, 'coverage', coverageFile),
+          ];
+
+          for (const coveragePath of candidatePaths) {
+            if (!this.fs.existsSync(coveragePath)) continue;
+
+            let pkgName = dir;
+            const pkgJsonPath = path.join(packagesDir, dir, 'package.json');
+            if (this.fs.existsSync(pkgJsonPath)) {
+              try {
+                const pkgJson = JSON.parse(
+                  this.fs.readFileSync(pkgJsonPath, 'utf8'),
+                );
+                pkgName = pkgJson.name || dir;
+              } catch {
+                pkgName = dir;
+              }
+            }
+            packagesWithCoverage.push({
+              package: pkgName,
+              path: coveragePath,
+            });
+            break; // prefer first existing path
+          }
+        }
+
+        if (packagesWithCoverage.length > 0) {
+          console.debug(
+            `📦 Found ${packagesWithCoverage.length} package coverages in packages/*`,
+          );
+          return { type: 'packages', files: packagesWithCoverage };
+        }
+      }
+
       // Fallback: try to read from coverage file in output directory
       const summaryPath = path.join(outputDir, path.basename(coverageFile));
       if (this.fs.existsSync(summaryPath)) {

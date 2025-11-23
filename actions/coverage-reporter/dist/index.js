@@ -29019,10 +29019,10 @@ class CoverageReporterService {
     return coverageData;
   }
 
-  loadCurrentCoverage(outputDir, coverageFile) {
-    try {
-      // Look for package-specific coverage files in the current artifacts
-      const packagesWithCoverage = [];
+    loadCurrentCoverage(outputDir, coverageFile) {
+        try {
+            // Look for package-specific coverage files in the current artifacts
+            const packagesWithCoverage = [];
 
       if (this.fs.existsSync(outputDir)) {
         const dirContents = this.fs.readdirSync(outputDir);
@@ -29035,26 +29035,72 @@ class CoverageReporterService {
             const coverageJsonPath = external_node_path_namespaceObject.join(itemPath, coverageFileName);
 
             if (this.fs.existsSync(coverageJsonPath)) {
-              packagesWithCoverage.push({
-                package: item,
-                path: coverageJsonPath,
-              });
+                            packagesWithCoverage.push({
+                                package: item,
+                                path: coverageJsonPath,
+                            });
+                        }
+                    }
+                }
             }
-          }
-        }
-      }
 
-      if (packagesWithCoverage.length > 0) {
-        console.debug(
-          `📦 Found ${packagesWithCoverage.length} current coverage packages`,
-        );
-        return { type: 'packages', files: packagesWithCoverage };
-      }
+            if (packagesWithCoverage.length > 0) {
+                console.debug(
+                    `📦 Found ${packagesWithCoverage.length} current coverage packages`,
+                );
+                return { type: 'packages', files: packagesWithCoverage };
+            }
 
-      // Fallback: try to read from coverage file in output directory
-      const summaryPath = external_node_path_namespaceObject.join(outputDir, external_node_path_namespaceObject.basename(coverageFile));
-      if (this.fs.existsSync(summaryPath)) {
-        console.debug(
+            // Fallback: search monorepo packages/* for coverage files
+            const packagesDir = 'packages';
+            if (this.fs.existsSync(packagesDir)) {
+                const packageDirs = this.fs
+                    .readdirSync(packagesDir)
+                    .filter((dir) =>
+                        this.fs.statSync(external_node_path_namespaceObject.join(packagesDir, dir)).isDirectory(),
+                    );
+
+                for (const dir of packageDirs) {
+                    const candidatePaths = [
+                        external_node_path_namespaceObject.join(packagesDir, dir, coverageFile),
+                        external_node_path_namespaceObject.join(packagesDir, dir, 'coverage', coverageFile),
+                    ];
+
+                    for (const coveragePath of candidatePaths) {
+                        if (!this.fs.existsSync(coveragePath)) continue;
+
+                        let pkgName = dir;
+                        const pkgJsonPath = external_node_path_namespaceObject.join(packagesDir, dir, 'package.json');
+                        if (this.fs.existsSync(pkgJsonPath)) {
+                            try {
+                                const pkgJson = JSON.parse(
+                                    this.fs.readFileSync(pkgJsonPath, 'utf8'),
+                                );
+                                pkgName = pkgJson.name || dir;
+                            } catch {
+                                pkgName = dir;
+                            }
+                        }
+                        packagesWithCoverage.push({
+                            package: pkgName,
+                            path: coveragePath,
+                        });
+                        break; // prefer first existing path
+                    }
+                }
+
+                if (packagesWithCoverage.length > 0) {
+                    console.debug(
+                        `📦 Found ${packagesWithCoverage.length} package coverages in packages/*`,
+                    );
+                    return { type: 'packages', files: packagesWithCoverage };
+                }
+            }
+
+            // Fallback: try to read from coverage file in output directory
+            const summaryPath = external_node_path_namespaceObject.join(outputDir, external_node_path_namespaceObject.basename(coverageFile));
+            if (this.fs.existsSync(summaryPath)) {
+                console.debug(
           `📊 Using ${external_node_path_namespaceObject.basename(coverageFile)} from output directory`,
         );
         return this.readCoverageFromFile(summaryPath);
