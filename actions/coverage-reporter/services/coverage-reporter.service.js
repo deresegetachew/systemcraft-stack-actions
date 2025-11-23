@@ -413,6 +413,28 @@ export class CoverageReporterService {
     };
   }
 
+  aggregateCoverageFromPackages(packages = []) {
+    if (!Array.isArray(packages) || packages.length === 0) {
+      return { statements: 0, branches: 0, functions: 0, lines: 0 };
+    }
+    const totals = packages.reduce(
+      (acc, pkg) => {
+        acc.statements += pkg.coverage?.statements || 0;
+        acc.branches += pkg.coverage?.branches || 0;
+        acc.functions += pkg.coverage?.functions || 0;
+        acc.lines += pkg.coverage?.lines || 0;
+        return acc;
+      },
+      { statements: 0, branches: 0, functions: 0, lines: 0 },
+    );
+    return {
+      statements: totals.statements / packages.length,
+      branches: totals.branches / packages.length,
+      functions: totals.functions / packages.length,
+      lines: totals.lines / packages.length,
+    };
+  }
+
   calculateCoverageDiff(current, baseline) {
     return {
       statements: (current?.statements || 0) - (baseline?.statements || 0),
@@ -446,6 +468,37 @@ export class CoverageReporterService {
       );
     }
 
+    if (!coverage.type && baselineCoverage?.type === 'packages') {
+      const aggregateBaseline = this.aggregateCoverageFromPackages(
+        baselineCoverage.packages,
+      );
+      const syntheticPackages = baselineCoverage.packages.map((pkg) => ({
+        package: pkg.package,
+        coverage: coverage,
+        baseline: pkg.coverage,
+        diff: this.calculateCoverageDiff(coverage, pkg.coverage),
+        status: this.isPassingCoverage(coverage, minimumCoverage)
+          ? 'pass'
+          : 'fail',
+      }));
+
+      return this.generatePackageMarkdownReport(
+        {
+          type: 'packages',
+          packages: syntheticPackages,
+          coverage,
+          baseline: aggregateBaseline,
+        },
+        minimumCoverage,
+        aggregateBaseline,
+      );
+    }
+
+    const normalizedBaseline =
+      baselineCoverage?.type === 'packages'
+        ? this.aggregateCoverageFromPackages(baselineCoverage.packages)
+        : baselineCoverage;
+
     const getStatus = (percentage) => {
       if (percentage >= 80) return '✅ Good';
       if (percentage >= 60) return '⚠️ Fair';
@@ -462,7 +515,6 @@ export class CoverageReporterService {
     const formatDiff = (current, baseline) => {
       if (baseline === null || baseline === undefined) return '';
       const diff = current - baseline;
-      if (Math.abs(diff) < 0.01) return '';
       const sign = diff > 0 ? '+' : '';
       return ` (${sign}${diff.toFixed(2)}%)`;
     };
@@ -481,11 +533,11 @@ export class CoverageReporterService {
 
     for (const metric of metrics) {
       const current = coverage[metric.key];
-      const baseline = baselineCoverage?.[metric.key];
+      const baseline = normalizedBaseline?.[metric.key];
       const diff = getDiffIcon(current, baseline);
       const change = formatDiff(current, baseline);
 
-      if (baselineCoverage) {
+      if (normalizedBaseline) {
         report += `| **${metric.label}** | ${current.toFixed(2)}% | ${baseline?.toFixed(2) || 'N/A'}% | ${change}${diff} | ${getStatus(current)} |\n`;
       } else {
         report += `| **${metric.label}** | ${current.toFixed(2)}% | ${getStatus(current)} |\n`;
