@@ -1,5 +1,8 @@
 import { describe, it, beforeEach } from 'node:test';
 import assert from 'node:assert';
+import fs from 'node:fs';
+import os from 'node:os';
+import path from 'node:path';
 
 import { CoverageReporterService } from './coverage-reporter.service.js';
 
@@ -210,6 +213,82 @@ All files          |   85.5 |    78.2 |   92.1 |   87.3 |
       assert(result.includes('75.00%'));
       assert(result.includes('✅ Pass'));
       assert(result.includes('❌ Fail'));
+    });
+  });
+
+  describe('metadata helpers', () => {
+    it('should build artifacts URL when env is set', () => {
+      const original = {
+        server: process.env.GITHUB_SERVER_URL,
+        repo: process.env.GITHUB_REPOSITORY,
+        run: process.env.GITHUB_RUN_ID,
+      };
+      process.env.GITHUB_SERVER_URL = 'https://example.com';
+      process.env.GITHUB_REPOSITORY = 'owner/repo';
+      process.env.GITHUB_RUN_ID = '123';
+
+      const localService = new CoverageReporterService(mockShell, fs);
+      const url = localService.getArtifactsUrl();
+      assert.strictEqual(
+        url,
+        'https://example.com/owner/repo/actions/runs/123',
+      );
+
+      process.env.GITHUB_SERVER_URL = original.server;
+      process.env.GITHUB_REPOSITORY = original.repo;
+      process.env.GITHUB_RUN_ID = original.run;
+    });
+
+    it('should read PR number from event payload', () => {
+      const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'cov-event-'));
+      const eventPath = path.join(tmpDir, 'event.json');
+      fs.writeFileSync(
+        eventPath,
+        JSON.stringify({ pull_request: { number: 42 } }),
+      );
+
+      process.env.GITHUB_EVENT_PATH = eventPath;
+      const localService = new CoverageReporterService(mockShell, fs);
+      const prNumber = localService.getPullRequestNumberFromEnv();
+      assert.strictEqual(prNumber, 42);
+      fs.rmSync(tmpDir, { recursive: true, force: true });
+      delete process.env.GITHUB_EVENT_PATH;
+    });
+
+    it('should upsert PR comment when data is available', async () => {
+      const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'cov-event-'));
+      const eventPath = path.join(tmpDir, 'event.json');
+      fs.writeFileSync(
+        eventPath,
+        JSON.stringify({ pull_request: { number: 7 } }),
+      );
+      process.env.GITHUB_EVENT_PATH = eventPath;
+      process.env.GITHUB_REPOSITORY = 'owner/repo';
+      process.env.GITHUB_TOKEN = 't0k';
+      process.env.GITHUB_SERVER_URL = 'https://example.com';
+      process.env.GITHUB_API_URL = 'https://api.example.com';
+
+      const fetchCalls = [];
+      global.fetch = async (url, options = {}) => {
+        fetchCalls.push({ url, options });
+        if (url.includes('comments?per_page')) {
+          return { ok: true, json: async () => [] };
+        }
+        return { ok: true, json: async () => ({}) };
+      };
+
+      const localService = new CoverageReporterService(mockShell, fs);
+      await localService.postPrCommentIfAvailable('body');
+      assert.strictEqual(fetchCalls.length, 2);
+      assert(fetchCalls[1].url.includes('/issues/7/comments'));
+
+      fs.rmSync(tmpDir, { recursive: true, force: true });
+      delete process.env.GITHUB_EVENT_PATH;
+      delete process.env.GITHUB_REPOSITORY;
+      delete process.env.GITHUB_TOKEN;
+      delete process.env.GITHUB_SERVER_URL;
+      delete process.env.GITHUB_API_URL;
+      delete global.fetch;
     });
   });
 

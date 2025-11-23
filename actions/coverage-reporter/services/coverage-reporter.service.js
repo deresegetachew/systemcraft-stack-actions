@@ -4,12 +4,40 @@ import * as os from 'node:os';
 
 import { ShellUtil, GitUtil } from '@systemcraft-stack-actions/utils';
 
+class EnvContext {
+  constructor(env = process.env) {
+    this.set(env);
+  }
+
+  set(env) {
+    this.serverUrl = env.GITHUB_SERVER_URL || 'https://github.com';
+    this.repo = env.GITHUB_REPOSITORY || '';
+    this.runId = env.GITHUB_RUN_ID || '';
+    this.ref = env.GITHUB_REF || '';
+    this.eventPath = env.GITHUB_EVENT_PATH || '';
+    this.apiUrl = env.GITHUB_API_URL || 'https://api.github.com';
+    this.token = env.GITHUB_TOKEN || '';
+  }
+
+  refresh() {
+    this.set(process.env);
+  }
+
+  getArtifactsUrl() {
+    if (!this.repo || !this.runId) {
+      return null;
+    }
+    return `${this.serverUrl}/${this.repo}/actions/runs/${this.runId}`;
+  }
+}
+
 export class CoverageReporterService {
   constructor(shellUtil, fsApi, gitUtil) {
     this.shell = shellUtil || new ShellUtil();
     this.fs = fsApi || fs;
     this.git = gitUtil || new GitUtil(this.shell); // Initialize with no token, will be set in run method
     this.tempDir = path.join(os.tmpdir(), 'coverage-baseline');
+    this.env = new EnvContext();
   }
 
   static create() {
@@ -1009,8 +1037,9 @@ export class CoverageReporterService {
   }
 
   getPullRequestNumberFromEnv() {
+    this.env.refresh();
     try {
-      const eventPath = process.env.GITHUB_EVENT_PATH;
+      const eventPath = this.env.eventPath;
       if (eventPath && this.fs.existsSync(eventPath)) {
         const eventData = JSON.parse(this.fs.readFileSync(eventPath, 'utf8'));
         if (eventData?.pull_request?.number) {
@@ -1024,7 +1053,7 @@ export class CoverageReporterService {
       console.warn(`⚠️ Failed to parse GITHUB_EVENT_PATH: ${error.message}`);
     }
 
-    const ref = process.env.GITHUB_REF || '';
+    const ref = this.env.ref || '';
     const match = ref.match(/refs\/pull\/(\d+)\/merge/i);
     if (match) {
       return Number(match[1]);
@@ -1034,19 +1063,15 @@ export class CoverageReporterService {
   }
 
   getArtifactsUrl() {
-    const server = process.env.GITHUB_SERVER_URL || 'https://github.com';
-    const repo = process.env.GITHUB_REPOSITORY;
-    const runId = process.env.GITHUB_RUN_ID;
-    if (!repo || !runId) {
-      return null;
-    }
-    return `${server}/${repo}/actions/runs/${runId}`;
+    this.env.refresh();
+    return this.env.getArtifactsUrl();
   }
 
   async postPrCommentIfAvailable(markdownBody) {
+    this.env.refresh();
     const prNumber = this.getPullRequestNumberFromEnv();
-    const repoInfo = this.parseRepository(process.env.GITHUB_REPOSITORY);
-    const token = this.git.githubToken || process.env.GITHUB_TOKEN;
+    const repoInfo = this.git.parseRepository(this.env.repo);
+    const token = this.git.githubToken || this.env.token;
 
     if (!prNumber || !repoInfo || !token) {
       console.debug(
@@ -1057,7 +1082,7 @@ export class CoverageReporterService {
 
     const marker = '<!-- coverage-reporter -->';
     const body = `${marker}\n${markdownBody}`;
-    const apiUrl = process.env.GITHUB_API_URL || 'https://api.github.com';
+    const apiUrl = this.env.apiUrl || 'https://api.github.com';
     const commentsUrl = `${apiUrl}/repos/${repoInfo.owner}/${repoInfo.repoName}/issues/${prNumber}/comments`;
     const headers = {
       Authorization: `Bearer ${token}`,
@@ -1120,7 +1145,8 @@ export class CoverageReporterService {
       return null;
     }
 
-    const repoInfo = this.git.parseRepository(process.env.GITHUB_REPOSITORY);
+    this.env.refresh();
+    const repoInfo = this.git.parseRepository(this.env.repo);
     if (!repoInfo) {
       return null;
     }
