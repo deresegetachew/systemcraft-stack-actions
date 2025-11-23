@@ -14,7 +14,7 @@ describe('CoverageReporterService', () => {
         if (cmd.includes('coverage')) {
           return {
             stdout: `
-All files          |   85.5 |    78.2 |   92.1 |   87.3 |
+All files          |   85.5 |    88.2 |   92.1 |   87.3 |
 changeset-validator|   90.0 |    85.0 |   95.0 |   88.0 |
 plan-maintenance   |   82.0 |    75.0 |   90.0 |   85.0 |
 release-branching  |   84.0 |    76.0 |   91.0 |   89.0 |
@@ -57,20 +57,6 @@ All files          |   85.5 |    78.2 |   92.1 |   87.3 |
       assert.strictEqual(result.branches, 0);
       assert.strictEqual(result.functions, 0);
       assert.strictEqual(result.lines, 0);
-    });
-  });
-
-  describe('calculateOverallCoverage', () => {
-    it('should calculate average coverage correctly', () => {
-      const coverage = {
-        statements: 80,
-        branches: 60,
-        functions: 100,
-        lines: 90,
-      };
-
-      const result = service.calculateOverallCoverage(coverage);
-      assert.strictEqual(result, 82.5);
     });
   });
 
@@ -129,17 +115,15 @@ All files          |   85.5 |    78.2 |   92.1 |   87.3 |
         branches: 0,
         functions: 5,
         lines: 5,
-        overall: 3.75,
       });
-      assert.strictEqual(pkgA.status, 'pass');
+      assert.strictEqual(pkgA.status, 'fail');
       assert.strictEqual(pkgB.diff, null);
 
       assert.strictEqual(summary.diff.statements, 5);
       assert.strictEqual(summary.diff.branches, 0);
       assert.strictEqual(summary.diff.functions, 5);
       assert.strictEqual(summary.diff.lines, 5);
-      assert(Math.abs(summary.diff.overall - 8.625) < 1e-10);
-      assert.strictEqual(summary.status, 'pass');
+      assert.strictEqual(summary.status, 'fail');
     });
   });
 
@@ -147,7 +131,7 @@ All files          |   85.5 |    78.2 |   92.1 |   87.3 |
     it('should generate markdown report with coverage data', () => {
       const coverage = {
         statements: 85.5,
-        branches: 78.2,
+        branches: 88.2,
         functions: 92.1,
         lines: 87.3,
       };
@@ -156,7 +140,7 @@ All files          |   85.5 |    78.2 |   92.1 |   87.3 |
 
       assert(result.includes('📊 Coverage Report'));
       assert(result.includes('85.50%'));
-      assert(result.includes('78.20%'));
+      assert(result.includes('88.20%'));
       assert(result.includes('✅'));
     });
 

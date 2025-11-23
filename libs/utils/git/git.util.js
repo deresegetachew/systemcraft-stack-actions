@@ -1,7 +1,11 @@
+import * as fs from 'node:fs';
+
 export class GitUtil {
-  constructor(shellService, githubToken = null) {
+  constructor(shellService, githubToken = null, fsApi = null) {
     this.shell = shellService;
     this.githubToken = githubToken;
+    this.fs = fsApi || fs;
+    this.refreshEnvContext();
   }
 
   async getChangedFiles() {
@@ -238,6 +242,126 @@ export class GitUtil {
       'X-GitHub-Api-Version': '2022-11-28',
       Accept: 'application/vnd.github+json',
     };
+  }
+
+  refreshEnvContext() {
+    this.envContext = {
+      repository: process.env.GITHUB_REPOSITORY || '',
+      ref: process.env.GITHUB_REF || '',
+      eventPath: process.env.GITHUB_EVENT_PATH || '',
+      apiUrl: process.env.GITHUB_API_URL || 'https://api.github.com',
+      token: this.githubToken || process.env.GITHUB_TOKEN || '',
+    };
+  }
+
+  parseRepository(repo) {
+    const [owner, repoName] = (repo || '').split('/');
+    if (!owner || !repoName) {
+      console.warn(`⚠️ Could not parse repository "${repo}"`);
+      return null;
+    }
+    return { owner, repoName };
+  }
+
+  getPullRequestNumberFromEnv(fsApi = this.fs) {
+    const fsImpl = fsApi || this.fs;
+    try {
+      const { eventPath } = this.envContext;
+      if (eventPath && fsImpl.existsSync(eventPath)) {
+        const eventData = JSON.parse(fsImpl.readFileSync(eventPath, 'utf8'));
+        if (eventData?.pull_request?.number) {
+          return eventData.pull_request.number;
+        }
+        if (eventData?.issue?.pull_request?.url && eventData?.issue?.number) {
+          return eventData.issue.number;
+        }
+      }
+    } catch (error) {
+      console.warn(`⚠️ Failed to parse GITHUB_EVENT_PATH: ${error.message}`);
+    }
+
+    const ref = this.envContext.ref || '';
+    const match = ref.match(/refs\/pull\/(\d+)\/merge/i);
+    if (match) {
+      return Number(match[1]);
+    }
+
+    return null;
+  }
+
+  async upsertPrComment({ body, marker = '<!-- coverage-reporter -->' }) {
+    const prNumber = this.getPullRequestNumberFromEnv();
+    const repoInfo = this.parseRepository(this.envContext.repository);
+    const token = this.githubToken || this.envContext.token;
+
+    if (!prNumber || !repoInfo || !token) {
+      console.debug(
+        '💬 Skipping PR comment: missing PR number, repo info, or GitHub token',
+      );
+      return false;
+    }
+
+    const apiUrl = this.envContext.apiUrl || 'https://api.github.com';
+    const commentsUrl = `${apiUrl}/repos/${repoInfo.owner}/${repoInfo.repoName}/issues/${prNumber}/comments`;
+    const headers = {
+      Authorization: `Bearer ${token}`,
+      'User-Agent': 'coverage-reporter',
+      Accept: 'application/vnd.github+json',
+      'Content-Type': 'application/json',
+    };
+
+    const commentBody = marker ? `${marker}\n${body}` : body;
+
+    try {
+      let existingCommentId = null;
+
+      const listResp = await fetch(`${commentsUrl}?per_page=100`, { headers });
+      if (listResp.ok) {
+        const comments = await listResp.json();
+        const existing = comments.find((c) => c?.body?.includes(marker));
+        if (existing) {
+          existingCommentId = existing.id;
+        }
+      } else {
+        console.warn(
+          `⚠️ Unable to list PR comments (${listResp.status} ${listResp.statusText})`,
+        );
+      }
+
+      if (existingCommentId) {
+        const updateUrl = `${apiUrl}/repos/${repoInfo.owner}/${repoInfo.repoName}/issues/comments/${existingCommentId}`;
+        const updateResp = await fetch(updateUrl, {
+          method: 'PATCH',
+          headers,
+          body: JSON.stringify({ body: commentBody }),
+        });
+        if (!updateResp.ok) {
+          console.warn(
+            `⚠️ Failed to update PR comment (${updateResp.status} ${updateResp.statusText})`,
+          );
+          return false;
+        }
+        console.debug('💬 Updated existing coverage PR comment');
+        return true;
+      }
+
+      const createResp = await fetch(commentsUrl, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify({ body: commentBody }),
+      });
+      if (!createResp.ok) {
+        console.warn(
+          `⚠️ Failed to post PR comment (${createResp.status} ${createResp.statusText})`,
+        );
+        return false;
+      }
+      console.debug('💬 Posted coverage PR comment');
+      return true;
+    } catch (error) {
+      console.warn(`⚠️ Failed to post PR comment: ${error.message}`);
+      return false;
+    }
   }
 
   #buildRequestURI(type, options) {

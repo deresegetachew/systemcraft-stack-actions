@@ -45,12 +45,23 @@ export class CoverageReporterService {
       normalizedInputs.minimumCoverage,
     );
 
-    this.persistSummaryFiles(summary, currentCoverage, normalizedInputs);
+    const persisted = await this.persistSummaryFiles(
+      summary,
+      currentCoverage,
+      normalizedInputs,
+    );
     this.copyHtmlReports(normalizedInputs.outputDir);
+    if (normalizedInputs.enablePrComments && persisted?.markdownReport) {
+      await this.git.upsertPrComment({
+        body: persisted.markdownReport,
+      });
+    }
     this.logFinalStats(summary, baselineCoverage);
 
     return {
-      coveragePercentage: summary.overall.toFixed(2),
+      coveragePercentage: this.getMinimumMetric(
+        summary.coverage || summary.details,
+      ).toFixed(2),
       status: summary.status,
       artifactsPath: normalizedInputs.outputDir,
       summary,
@@ -105,15 +116,18 @@ export class CoverageReporterService {
       );
     }
 
-    const overallCoverage = this.calculateOverallCoverage(coverage);
-
     return {
-      overall: overallCoverage,
+      coverage,
+      diff: baselineCoverage
+        ? this.calculateCoverageDiff(coverage, baselineCoverage)
+        : null,
       details: coverage,
       baseline: baselineCoverage,
       timestamp: new Date().toISOString(),
       minimumCoverage,
-      status: overallCoverage >= minimumCoverage ? 'pass' : 'fail',
+      status: this.isPassingCoverage(coverage, minimumCoverage)
+        ? 'pass'
+        : 'fail',
     };
   }
 
@@ -153,16 +167,7 @@ export class CoverageReporterService {
       try {
         const baselinePkgCoverage = baselineMap.get(pkgName) || null;
         const diff = baselinePkgCoverage
-          ? {
-              statements:
-                pkgCoverage.statements - baselinePkgCoverage.statements,
-              branches: pkgCoverage.branches - baselinePkgCoverage.branches,
-              functions: pkgCoverage.functions - baselinePkgCoverage.functions,
-              lines: pkgCoverage.lines - baselinePkgCoverage.lines,
-              overall:
-                this.calculateOverallCoverage(pkgCoverage) -
-                this.calculateOverallCoverage(baselinePkgCoverage),
-            }
+          ? this.calculateCoverageDiff(pkgCoverage, baselinePkgCoverage)
           : null;
 
         packageComparisons.push({
@@ -170,10 +175,9 @@ export class CoverageReporterService {
           coverage: pkgCoverage,
           baseline: baselinePkgCoverage,
           diff,
-          status:
-            this.calculateOverallCoverage(pkgCoverage) >= minimumCoverage
-              ? 'pass'
-              : 'fail',
+          status: this.isPassingCoverage(pkgCoverage, minimumCoverage)
+            ? 'pass'
+            : 'fail',
         });
 
         // Add to total for overall calculation
@@ -229,24 +233,20 @@ export class CoverageReporterService {
             branches: totalDiff.branches / packagesWithBaseline,
             functions: totalDiff.functions / packagesWithBaseline,
             lines: totalDiff.lines / packagesWithBaseline,
-            overall:
-              this.calculateOverallCoverage(overallCoverage) -
-              this.calculateOverallCoverage(overallBaselineCoverage),
           }
         : null;
 
-    const overall = this.calculateOverallCoverage(overallCoverage);
-
     return {
       type: 'packages',
-      overall,
       baseline: overallBaselineCoverage,
       diff: overallDiff,
       coverage: overallCoverage,
       packages: packageComparisons,
       timestamp: new Date().toISOString(),
       minimumCoverage,
-      status: overall >= minimumCoverage ? 'pass' : 'fail',
+      status: packageComparisons.every((pkg) => pkg.status === 'pass')
+        ? 'pass'
+        : 'fail',
     };
   }
 
@@ -266,12 +266,13 @@ export class CoverageReporterService {
     return null;
   }
 
-  persistSummaryFiles(summary, coverage, inputs) {
-    const summaryPath = path.join(inputs.outputDir, 'coverage-summary.json');
+  async persistSummaryFiles(summary, coverage, inputs) {
+    const summaryFileName = path.basename(inputs.coverageFile);
+    const summaryPath = path.join(inputs.outputDir, summaryFileName);
     this.fs.writeFileSync(summaryPath, JSON.stringify(summary, null, 2));
 
     if (!inputs.enablePrComments) {
-      return;
+      return { summaryPath, reportPath: null, markdownReport: null };
     }
 
     const markdownReport = this.generateMarkdownReport(
@@ -282,6 +283,8 @@ export class CoverageReporterService {
     const reportPath = path.join(inputs.outputDir, 'coverage-report.md');
     this.fs.writeFileSync(reportPath, markdownReport);
     console.debug(`✅ Coverage report saved to ${reportPath}`);
+
+    return { summaryPath, reportPath, markdownReport };
   }
 
   copyHtmlReports(outputDir) {
@@ -295,38 +298,45 @@ export class CoverageReporterService {
 
   logFinalStats(summary, baselineCoverage) {
     console.debug('🎉 Coverage reporting completed!');
-    console.debug(`📊 Overall coverage: ${summary.overall.toFixed(2)}%`);
+    const metricKeys = ['statements', 'branches', 'functions', 'lines'];
+    const formatCoverageLine = (label, data) =>
+      `${label}: ${metricKeys
+        .map((m) => `${m[0].toUpperCase()}: ${data[m].toFixed(2)}%`)
+        .join(' | ')}`;
 
     if (summary.type === 'packages') {
       console.debug(`📦 Package breakdown:`);
       for (const pkg of summary.packages) {
-        const overallCoverage = this.calculateOverallCoverage(pkg.coverage);
-        const baselineOverall = pkg.baseline
-          ? this.calculateOverallCoverage(pkg.baseline)
-          : null;
-
-        if (baselineOverall !== null) {
-          const diff = overallCoverage - baselineOverall;
-          const diffIcon = diff > 0 ? '⬆️' : diff < 0 ? '⬇️' : '➡️';
+        if (pkg.baseline) {
+          const diff = this.calculateCoverageDiff(pkg.coverage, pkg.baseline);
           console.debug(
-            `  📋 ${pkg.package}: ${overallCoverage.toFixed(2)}% (${diff > 0 ? '+' : ''}${diff.toFixed(2)}% ${diffIcon})`,
+            `  📋 ${pkg.package}: ${formatCoverageLine('current', pkg.coverage)} | Δ ${formatCoverageLine(
+              'diff',
+              diff,
+            )}`,
           );
         } else {
-          console.debug(`  📋 ${pkg.package}: ${overallCoverage.toFixed(2)}%`);
+          console.debug(
+            `  📋 ${pkg.package}: ${formatCoverageLine('current', pkg.coverage)}`,
+          );
         }
       }
       return;
     }
 
+    const current = summary.coverage || summary.details;
+
+    console.debug(
+      `📊 Current coverage: ${formatCoverageLine('current', current)}`,
+    );
+
     if (!baselineCoverage) {
       return;
     }
 
-    const baselineOverall = this.calculateOverallCoverage(baselineCoverage);
-    const diff = summary.overall - baselineOverall;
-    const diffIcon = diff > 0 ? '⬆️' : diff < 0 ? '⬇️' : '➡️';
+    const diff = this.calculateCoverageDiff(current, baselineCoverage);
     console.debug(
-      `📈 Coverage change: ${diff > 0 ? '+' : ''}${diff.toFixed(2)}% ${diffIcon}`,
+      `📈 Coverage change by metric: ${formatCoverageLine('diff', diff)}`,
     );
   }
 
@@ -403,14 +413,27 @@ export class CoverageReporterService {
     };
   }
 
-  calculateOverallCoverage(coverage) {
-    return (
-      (coverage.statements +
-        coverage.branches +
-        coverage.functions +
-        coverage.lines) /
-      4
+  calculateCoverageDiff(current, baseline) {
+    return {
+      statements: (current?.statements || 0) - (baseline?.statements || 0),
+      branches: (current?.branches || 0) - (baseline?.branches || 0),
+      functions: (current?.functions || 0) - (baseline?.functions || 0),
+      lines: (current?.lines || 0) - (baseline?.lines || 0),
+    };
+  }
+
+  isPassingCoverage(coverage, minimum) {
+    const metrics = ['statements', 'branches', 'functions', 'lines'];
+    return metrics.every((metric) => (coverage?.[metric] ?? 0) >= minimum);
+  }
+
+  getMinimumMetric(coverage) {
+    const metrics = ['statements', 'branches', 'functions', 'lines'];
+    const result = metrics.reduce(
+      (min, key) => Math.min(min, Number(coverage?.[key] ?? 0)),
+      Infinity,
     );
+    return Number.isFinite(result) ? result : 0;
   }
 
   generateMarkdownReport(coverage, minimumCoverage, baselineCoverage = null) {
@@ -423,29 +446,21 @@ export class CoverageReporterService {
       );
     }
 
-    // Original single-coverage report logic
-    const overallCoverage = this.calculateOverallCoverage(coverage);
-
     const getStatus = (percentage) => {
       if (percentage >= 80) return '✅ Good';
       if (percentage >= 60) return '⚠️ Fair';
       return '❌ Poor';
     };
 
-    const getChangeIcon = (percentage, minimum) => {
-      if (percentage >= minimum) return '✅';
-      return '❌';
-    };
-
     const getDiffIcon = (current, baseline) => {
-      if (!baseline) return '';
+      if (baseline === null || baseline === undefined) return '';
       const diff = current - baseline;
       if (Math.abs(diff) < 0.01) return ' ➡️'; // No change
       return diff > 0 ? ' ⬆️' : ' ⬇️';
     };
 
     const formatDiff = (current, baseline) => {
-      if (!baseline) return '';
+      if (baseline === null || baseline === undefined) return '';
       const diff = current - baseline;
       if (Math.abs(diff) < 0.01) return '';
       const sign = diff > 0 ? '+' : '';
@@ -454,16 +469,8 @@ export class CoverageReporterService {
 
     let report = `## 📊 Coverage Report\n\n`;
 
-    const baselineOverall = baselineCoverage
-      ? this.calculateOverallCoverage(baselineCoverage)
-      : null;
-    const overallDiff = getDiffIcon(overallCoverage, baselineOverall);
-    const overallChange = formatDiff(overallCoverage, baselineOverall);
-
-    report += `### Overall Coverage: ${overallCoverage.toFixed(2)}%${overallChange}${overallDiff} ${getChangeIcon(overallCoverage, minimumCoverage)}\n\n`;
-
-    report += `| Metric | Coverage | Status |\n`;
-    report += `|--------|----------|--------|\n`;
+    report += `| Metric | Current | ${baselineCoverage ? 'Baseline | Change |' : ''} Status |\n`;
+    report += `|--------|---------|${baselineCoverage ? '---------|--------|' : ''}--------|\n`;
 
     const metrics = [
       { key: 'statements', label: 'Statements' },
@@ -478,12 +485,16 @@ export class CoverageReporterService {
       const diff = getDiffIcon(current, baseline);
       const change = formatDiff(current, baseline);
 
-      report += `| **${metric.label}** | ${current.toFixed(2)}%${change}${diff} | ${getStatus(current)} |\n`;
+      if (baselineCoverage) {
+        report += `| **${metric.label}** | ${current.toFixed(2)}% | ${baseline?.toFixed(2) || 'N/A'}% | ${change}${diff} | ${getStatus(current)} |\n`;
+      } else {
+        report += `| **${metric.label}** | ${current.toFixed(2)}% | ${getStatus(current)} |\n`;
+      }
     }
 
     report += '\n';
 
-    if (overallCoverage < minimumCoverage) {
+    if (!this.isPassingCoverage(coverage, minimumCoverage)) {
       report += `⚠️ **Coverage is below minimum threshold of ${minimumCoverage}%**\n\n`;
     }
 
@@ -508,11 +519,6 @@ export class CoverageReporterService {
       return '❌ Poor';
     };
 
-    const getChangeIcon = (percentage, minimum) => {
-      if (percentage >= minimum) return '✅';
-      return '❌';
-    };
-
     const getDiffIcon = (current, baseline) => {
       if (baseline === null || baseline === undefined) return '';
       const diff = current - baseline;
@@ -530,21 +536,8 @@ export class CoverageReporterService {
 
     const aggregateBaseline = summary.baseline || baselineCoverage || null;
     const aggregateCoverage = summary.coverage || null;
-    const aggregateBaselineOverall = aggregateBaseline
-      ? this.calculateOverallCoverage(aggregateBaseline)
-      : null;
-
-    const aggregateDiffIcon = getDiffIcon(
-      summary.overall,
-      aggregateBaselineOverall,
-    );
-    const aggregateChange = formatDiff(
-      summary.overall,
-      aggregateBaselineOverall,
-    );
 
     let report = `## 📊 Coverage Report by Package\n\n`;
-    report += `### Overall Coverage: ${summary.overall.toFixed(2)}%${aggregateChange}${aggregateDiffIcon} ${getChangeIcon(summary.overall, minimumCoverage)}\n\n`;
 
     if (aggregateCoverage) {
       report += `| Metric | Current | ${aggregateBaseline ? 'Baseline | Change |' : ''} Status |\n`;
@@ -576,17 +569,8 @@ export class CoverageReporterService {
     // Package-by-package breakdown
     for (const pkg of summary.packages) {
       const { package: pkgName, coverage, baseline } = pkg;
-      const overallCoverage = this.calculateOverallCoverage(coverage);
-      const baselineOverall = baseline
-        ? this.calculateOverallCoverage(baseline)
-        : null;
-
-      const overallDiff = getDiffIcon(overallCoverage, baselineOverall);
-      const overallChange = formatDiff(overallCoverage, baselineOverall);
 
       report += `#### 📦 ${pkgName}\n`;
-      report += `**Overall: ${overallCoverage.toFixed(2)}%${overallChange}${overallDiff}** ${getChangeIcon(overallCoverage, minimumCoverage)}\n\n`;
-
       report += `| Metric | Current | ${baseline ? 'Baseline | Change |' : ''} Status |\n`;
       report += `|--------|---------|${baseline ? '---------|--------|' : ''}--------|\n`;
 
@@ -613,8 +597,8 @@ export class CoverageReporterService {
       report += '\n';
     }
 
-    if (summary.overall < minimumCoverage) {
-      report += `⚠️ **Overall coverage is below minimum threshold of ${minimumCoverage}%**\n\n`;
+    if (!summary.packages.every((pkg) => pkg.status === 'pass')) {
+      report += `⚠️ **Some packages are below the minimum threshold of ${minimumCoverage}%**\n\n`;
     }
 
     const failedPackages = summary.packages.filter(
@@ -756,15 +740,6 @@ export class CoverageReporterService {
     return true;
   }
 
-  parseRepository(repo) {
-    const [owner, repoName] = (repo || '').split('/');
-    if (!owner || !repoName) {
-      console.warn(`⚠️ Could not parse repository "${repo}"`);
-      return null;
-    }
-    return { owner, repoName };
-  }
-
   getBaselineZipPath() {
     return path.join(this.tempDir, 'baseline.zip');
   }
@@ -798,22 +773,20 @@ export class CoverageReporterService {
     }
   }
 
-  findBaselineCoverageFiles(extractDir) {
+  findBaselineCoverageFiles(
+    extractDir,
+    coverageFileName = 'coverage-summary.json',
+  ) {
     const coverageFiles = [];
 
     // First, try standard coverage-summary.json locations
     const possibleSummaryPaths = [
-      path.join(extractDir, 'coverage-summary.json'),
-      path.join(extractDir, 'coverage-artifacts', 'coverage-summary.json'),
-      path.join(extractDir, 'coverage', 'coverage-summary.json'),
-      path.join(
-        extractDir,
-        'coverage-artifacts',
-        'coverage',
-        'coverage-summary.json',
-      ),
-      path.join(extractDir, 'dist', 'coverage-summary.json'),
-      path.join(extractDir, 'artifacts', 'coverage-summary.json'),
+      path.join(extractDir, coverageFileName),
+      path.join(extractDir, 'coverage-artifacts', coverageFileName),
+      path.join(extractDir, 'coverage', coverageFileName),
+      path.join(extractDir, 'coverage-artifacts', 'coverage', coverageFileName),
+      path.join(extractDir, 'dist', coverageFileName),
+      path.join(extractDir, 'artifacts', coverageFileName),
     ];
 
     for (const summaryPath of possibleSummaryPaths) {
@@ -850,7 +823,7 @@ export class CoverageReporterService {
     return null;
   }
 
-  readBaselineCoverage(extractDir) {
+  readBaselineCoverage(extractDir, coverageFileName = 'coverage-summary.json') {
     // Debug: show what's actually in the extracted directory
     console.debug('🔍 Debugging extracted artifact contents...');
     try {
@@ -869,7 +842,10 @@ export class CoverageReporterService {
       console.warn('Failed to debug directory contents:', error.message);
     }
 
-    const coverageResult = this.findBaselineCoverageFiles(extractDir);
+    const coverageResult = this.findBaselineCoverageFiles(
+      extractDir,
+      coverageFileName,
+    );
 
     if (!coverageResult) {
       console.warn('⚠️ No coverage data found in baseline artifact');
@@ -938,12 +914,109 @@ export class CoverageReporterService {
     this.fs.rmSync(this.tempDir, { recursive: true, force: true });
   }
 
+  getPullRequestNumberFromEnv() {
+    try {
+      const eventPath = process.env.GITHUB_EVENT_PATH;
+      if (eventPath && this.fs.existsSync(eventPath)) {
+        const eventData = JSON.parse(this.fs.readFileSync(eventPath, 'utf8'));
+        if (eventData?.pull_request?.number) {
+          return eventData.pull_request.number;
+        }
+        if (eventData?.issue?.pull_request?.url && eventData?.issue?.number) {
+          return eventData.issue.number;
+        }
+      }
+    } catch (error) {
+      console.warn(`⚠️ Failed to parse GITHUB_EVENT_PATH: ${error.message}`);
+    }
+
+    const ref = process.env.GITHUB_REF || '';
+    const match = ref.match(/refs\/pull\/(\d+)\/merge/i);
+    if (match) {
+      return Number(match[1]);
+    }
+
+    return null;
+  }
+
+  async postPrCommentIfAvailable(markdownBody) {
+    const prNumber = this.getPullRequestNumberFromEnv();
+    const repoInfo = this.parseRepository(process.env.GITHUB_REPOSITORY);
+    const token = this.git.githubToken || process.env.GITHUB_TOKEN;
+
+    if (!prNumber || !repoInfo || !token) {
+      console.debug(
+        '💬 Skipping PR comment: missing PR number, repo info, or GitHub token',
+      );
+      return;
+    }
+
+    const marker = '<!-- coverage-reporter -->';
+    const body = `${marker}\n${markdownBody}`;
+    const apiUrl = process.env.GITHUB_API_URL || 'https://api.github.com';
+    const commentsUrl = `${apiUrl}/repos/${repoInfo.owner}/${repoInfo.repoName}/issues/${prNumber}/comments`;
+    const headers = {
+      Authorization: `Bearer ${token}`,
+      'User-Agent': 'coverage-reporter',
+      Accept: 'application/vnd.github+json',
+      'Content-Type': 'application/json',
+    };
+
+    try {
+      let existingCommentId = null;
+
+      const listResp = await fetch(`${commentsUrl}?per_page=100`, { headers });
+      if (listResp.ok) {
+        const comments = await listResp.json();
+        const existing = comments.find((c) => c?.body?.includes(marker));
+        if (existing) {
+          existingCommentId = existing.id;
+        }
+      } else {
+        console.warn(
+          `⚠️ Unable to list PR comments (${listResp.status} ${listResp.statusText})`,
+        );
+      }
+
+      if (existingCommentId) {
+        const updateUrl = `${apiUrl}/repos/${repoInfo.owner}/${repoInfo.repoName}/issues/comments/${existingCommentId}`;
+        const updateResp = await fetch(updateUrl, {
+          method: 'PATCH',
+          headers,
+          body: JSON.stringify({ body }),
+        });
+        if (!updateResp.ok) {
+          console.warn(
+            `⚠️ Failed to update PR comment (${updateResp.status} ${updateResp.statusText})`,
+          );
+        } else {
+          console.debug('💬 Updated existing coverage PR comment');
+        }
+      } else {
+        const createResp = await fetch(commentsUrl, {
+          method: 'POST',
+          headers,
+          body: JSON.stringify({ body }),
+        });
+        if (!createResp.ok) {
+          console.warn(
+            `⚠️ Failed to post PR comment (${createResp.status} ${createResp.statusText})`,
+          );
+        } else {
+          console.debug('💬 Posted coverage PR comment');
+        }
+      }
+    } catch (error) {
+      console.warn(`⚠️ Failed to post PR comment: ${error.message}`);
+    }
+  }
+
   async getBaselineCoverage(inputs) {
     if (!this.canDownloadBaseLine(inputs)) {
       return null;
     }
 
-    const repoInfo = this.parseRepository(process.env.GITHUB_REPOSITORY);
+    const repoInfo = this.git.parseRepository(process.env.GITHUB_REPOSITORY);
     if (!repoInfo) {
       return null;
     }
@@ -974,7 +1047,10 @@ export class CoverageReporterService {
         return null;
       }
 
-      baselineCoverage = this.readBaselineCoverage(extractDir);
+      baselineCoverage = this.readBaselineCoverage(
+        extractDir,
+        path.basename(inputs.coverageFile),
+      );
       return baselineCoverage;
     } catch (error) {
       console.warn(`⚠️ Failed to download baseline: ${error.message}`);
