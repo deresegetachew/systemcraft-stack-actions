@@ -28230,7 +28230,7 @@ class CoverageReporterService {
         console.debug(
             `Baseline data:, ${JSON.stringify(baselineCoverage, null, 2)}`,
         );
-        console.debug(`Coverage data: ${JSON.stringify(currentCoverage, null, 2)}`);
+        console.debug(`Current data: ${JSON.stringify(currentCoverage, null, 2)}`);
 
         const summary = this.createSummary(
             currentCoverage,
@@ -28285,9 +28285,15 @@ class CoverageReporterService {
     createSummary(coverage, baselineCoverage, minimumCoverage) {
         // Handle both single coverage and per-package coverage
         if (coverage.type === 'packages') {
+            const normalizedCoverage =
+                this.normalizePackagesCoverage(coverage) || coverage;
+            const normalizedBaseline =
+                baselineCoverage?.type === 'packages'
+                    ? this.normalizePackagesCoverage(baselineCoverage)
+                    : null;
             return this.createPackageComparisonSummary(
-                coverage,
-                baselineCoverage,
+                normalizedCoverage,
+                normalizedBaseline,
                 minimumCoverage,
             );
         }
@@ -28309,9 +28315,18 @@ class CoverageReporterService {
         baselineCoverage,
         minimumCoverage,
     ) {
+        const currentPackages = currentCoverage?.packages || [];
         const packageComparisons = [];
         let totalCoverage = { statements: 0, branches: 0, functions: 0, lines: 0 };
+        let totalBaselineCoverage = {
+            statements: 0,
+            branches: 0,
+            functions: 0,
+            lines: 0,
+        };
+        let totalDiff = { statements: 0, branches: 0, functions: 0, lines: 0 };
         let totalPackages = 0;
+        let packagesWithBaseline = 0;
 
         // Parse baseline coverage into a map for easy lookup
         const baselineMap = new Map();
@@ -28322,18 +28337,31 @@ class CoverageReporterService {
         }
 
         // Process each current package
-        for (const { package: pkgName, path: filePath } of currentCoverage.files) {
+        for (const pkg of currentPackages) {
+            const { package: pkgName, coverage: pkgCoverage } = pkg;
+            if (!pkgName || !pkgCoverage) {
+                continue;
+            }
+
             try {
-                const pkgCoverageData = JSON.parse(
-                    this.fs.readFileSync(filePath, 'utf8'),
-                );
-                const pkgCoverage = this.parseCoverageFromSummary(pkgCoverageData);
                 const baselinePkgCoverage = baselineMap.get(pkgName) || null;
+                const diff = baselinePkgCoverage
+                    ? {
+                        statements: pkgCoverage.statements - baselinePkgCoverage.statements,
+                        branches: pkgCoverage.branches - baselinePkgCoverage.branches,
+                        functions: pkgCoverage.functions - baselinePkgCoverage.functions,
+                        lines: pkgCoverage.lines - baselinePkgCoverage.lines,
+                        overall:
+                            this.calculateOverallCoverage(pkgCoverage) -
+                            this.calculateOverallCoverage(baselinePkgCoverage),
+                    }
+                    : null;
 
                 packageComparisons.push({
                     package: pkgName,
                     coverage: pkgCoverage,
                     baseline: baselinePkgCoverage,
+                    diff,
                     status:
                         this.calculateOverallCoverage(pkgCoverage) >= minimumCoverage
                             ? 'pass'
@@ -28346,6 +28374,18 @@ class CoverageReporterService {
                 totalCoverage.functions += pkgCoverage.functions;
                 totalCoverage.lines += pkgCoverage.lines;
                 totalPackages++;
+
+                if (baselinePkgCoverage) {
+                    totalBaselineCoverage.statements += baselinePkgCoverage.statements;
+                    totalBaselineCoverage.branches += baselinePkgCoverage.branches;
+                    totalBaselineCoverage.functions += baselinePkgCoverage.functions;
+                    totalBaselineCoverage.lines += baselinePkgCoverage.lines;
+                    totalDiff.statements += diff.statements;
+                    totalDiff.branches += diff.branches;
+                    totalDiff.functions += diff.functions;
+                    totalDiff.lines += diff.lines;
+                    packagesWithBaseline++;
+                }
             } catch (error) {
                 console.warn(
                     `⚠️ Failed to parse current coverage for ${pkgName}: ${error.message}`,
@@ -28364,16 +28404,58 @@ class CoverageReporterService {
                 }
                 : { statements: 0, branches: 0, functions: 0, lines: 0 };
 
+        const overallBaselineCoverage =
+            packagesWithBaseline > 0
+                ? {
+                    statements: totalBaselineCoverage.statements / packagesWithBaseline,
+                    branches: totalBaselineCoverage.branches / packagesWithBaseline,
+                    functions: totalBaselineCoverage.functions / packagesWithBaseline,
+                    lines: totalBaselineCoverage.lines / packagesWithBaseline,
+                }
+                : null;
+
+        const overallDiff =
+            packagesWithBaseline > 0
+                ? {
+                    statements: totalDiff.statements / packagesWithBaseline,
+                    branches: totalDiff.branches / packagesWithBaseline,
+                    functions: totalDiff.functions / packagesWithBaseline,
+                    lines: totalDiff.lines / packagesWithBaseline,
+                    overall:
+                        this.calculateOverallCoverage(overallCoverage) -
+                        this.calculateOverallCoverage(overallBaselineCoverage),
+                }
+                : null;
+
         const overall = this.calculateOverallCoverage(overallCoverage);
 
         return {
             type: 'packages',
             overall,
+            baseline: overallBaselineCoverage,
+            diff: overallDiff,
+            coverage: overallCoverage,
             packages: packageComparisons,
             timestamp: new Date().toISOString(),
             minimumCoverage,
             status: overall >= minimumCoverage ? 'pass' : 'fail',
         };
+    }
+
+    normalizePackagesCoverage(coverage) {
+        if (!coverage || coverage.type !== 'packages') {
+            return null;
+        }
+
+        if (Array.isArray(coverage.packages)) {
+            return coverage;
+        }
+
+        if (Array.isArray(coverage.files)) {
+            return this.buildPackagesCoverageDetail(coverage);
+        }
+
+        return null;
     }
 
     persistSummaryFiles(summary, coverage, inputs) {
@@ -28493,12 +28575,19 @@ class CoverageReporterService {
 
     parseCoverageFromSummary(summary) {
         console.debug(`parsing summary coverage ${JSON.stringify({ summary })}`);
-        const { total } = summary;
+        const totals = summary?.total ?? summary ?? {};
+        const normalize = (metric) => {
+            const raw = totals?.[metric];
+            const pct = raw?.pct ?? raw;
+            const asNumber =
+                typeof pct === 'number' ? pct : Number.isFinite(Number(pct)) ? Number(pct) : NaN;
+            return Number.isFinite(asNumber) ? asNumber : 0;
+        };
         return {
-            statements: total.statements.pct ?? 0,
-            branches: total.branches.pct ?? 0,
-            functions: total.functions.pct ?? 0,
-            lines: total.lines.pct ?? 0,
+            statements: normalize('statements'),
+            branches: normalize('branches'),
+            functions: normalize('functions'),
+            lines: normalize('lines'),
         };
     }
 
@@ -28613,22 +28702,64 @@ class CoverageReporterService {
         };
 
         const getDiffIcon = (current, baseline) => {
-            if (!baseline) return '';
+            if (baseline === null || baseline === undefined) return '';
             const diff = current - baseline;
             if (Math.abs(diff) < 0.01) return ' ➡️';
             return diff > 0 ? ' ⬆️' : ' ⬇️';
         };
 
         const formatDiff = (current, baseline) => {
-            if (!baseline) return '';
+            if (baseline === null || baseline === undefined) return '';
             const diff = current - baseline;
             if (Math.abs(diff) < 0.01) return '';
             const sign = diff > 0 ? '+' : '';
             return ` (${sign}${diff.toFixed(2)}%)`;
         };
 
+        const aggregateBaseline = summary.baseline || baselineCoverage || null;
+        const aggregateCoverage = summary.coverage || null;
+        const aggregateBaselineOverall = aggregateBaseline
+            ? this.calculateOverallCoverage(aggregateBaseline)
+            : null;
+
+        const aggregateDiffIcon = getDiffIcon(
+            summary.overall,
+            aggregateBaselineOverall,
+        );
+        const aggregateChange = formatDiff(
+            summary.overall,
+            aggregateBaselineOverall,
+        );
+
         let report = `## 📊 Coverage Report by Package\n\n`;
-        report += `### Overall Coverage: ${summary.overall.toFixed(2)}% ${getChangeIcon(summary.overall, minimumCoverage)}\n\n`;
+        report += `### Overall Coverage: ${summary.overall.toFixed(2)}%${aggregateChange}${aggregateDiffIcon} ${getChangeIcon(summary.overall, minimumCoverage)}\n\n`;
+
+        if (aggregateCoverage) {
+            report += `| Metric | Current | ${aggregateBaseline ? 'Baseline | Change |' : ''} Status |\n`;
+            report += `|--------|---------|${aggregateBaseline ? '---------|--------|' : ''}--------|\n`;
+
+            const metrics = [
+                { key: 'statements', label: 'Statements' },
+                { key: 'branches', label: 'Branches' },
+                { key: 'functions', label: 'Functions' },
+                { key: 'lines', label: 'Lines' },
+            ];
+
+            for (const metric of metrics) {
+                const current = aggregateCoverage[metric.key];
+                const baseline = aggregateBaseline?.[metric.key];
+                const diff = getDiffIcon(current, baseline);
+                const change = formatDiff(current, baseline);
+
+                if (aggregateBaseline) {
+                    report += `| **${metric.label}** | ${current.toFixed(2)}% | ${baseline?.toFixed(2) || 'N/A'}% | ${change}${diff} | ${getStatus(current)} |\n`;
+                } else {
+                    report += `| **${metric.label}** | ${current.toFixed(2)}% | ${getStatus(current)} |\n`;
+                }
+            }
+
+            report += '\n';
+        }
 
         // Package-by-package breakdown
         for (const pkg of summary.packages) {
@@ -28691,40 +28822,7 @@ class CoverageReporterService {
         return report;
     }
 
-    aggregatePackageCoverage(packageCoverage) {
-        let totalCoverage = { statements: 0, branches: 0, functions: 0, lines: 0 };
-        let totalPackages = 0;
 
-        for (const { package: pkgName, path: filePath } of packageCoverage.files) {
-            try {
-                const pkgCoverageData = JSON.parse(
-                    this.fs.readFileSync(filePath, 'utf8'),
-                );
-                const pkgCoverage = this.parseCoverageFromSummary(pkgCoverageData);
-
-                totalCoverage.statements += pkgCoverage.statements;
-                totalCoverage.branches += pkgCoverage.branches;
-                totalCoverage.functions += pkgCoverage.functions;
-                totalCoverage.lines += pkgCoverage.lines;
-                totalPackages++;
-            } catch (error) {
-                console.warn(
-                    `⚠️ Failed to parse current coverage for ${pkgName}: ${error.message}`,
-                );
-            }
-        }
-
-        if (totalPackages > 0) {
-            return {
-                statements: totalCoverage.statements / totalPackages,
-                branches: totalCoverage.branches / totalPackages,
-                functions: totalCoverage.functions / totalPackages,
-                lines: totalCoverage.lines / totalPackages,
-            };
-        }
-
-        return { statements: 0, branches: 0, functions: 0, lines: 0 };
-    }
 
     getCurrentCoverage(inputs) {
         let coverageData = this.loadCurrentCoverage(
@@ -28774,8 +28872,7 @@ class CoverageReporterService {
 
         if (coverageData && coverageData.type === 'packages') {
             console.debug('📦 Aggregating package coverage...');
-            return this.combinePackageCoverage(coverageData);
-            // return this.aggregatePackageCoverage(coverageData);
+            return this.buildPackagesCoverageDetail(coverageData);
         }
 
         return coverageData;
@@ -28982,7 +29079,7 @@ class CoverageReporterService {
                 );
             } else if (coverageResult.type === 'packages') {
                 // Handle package-specific coverage.json files
-                return this.combinePackageCoverage(coverageResult.files);
+                return this.buildPackagesCoverageDetail(coverageResult.files);
             }
         } catch (error) {
             console.warn(`⚠️ Failed to parse baseline coverage: ${error.message}`);
@@ -28992,19 +29089,27 @@ class CoverageReporterService {
         return null;
     }
 
-    combinePackageCoverage(coverageFiles) {
-        console.debug('🔄 Processing package-specific coverage data...');
+    buildPackagesCoverageDetail(coverageFiles) {
+        console.debug('🔄 Processing package-specific coverage data...', { coverageFiles });
 
         const packages = [];
 
-        for (const { package: pkgName, path: filePath } of coverageFiles) {
+        const filesToProcess = Array.isArray(coverageFiles)
+            ? coverageFiles
+            : coverageFiles?.files || coverageFiles?.packages || [];
+
+        for (const { package: pkgName, path: filePath, coverage } of filesToProcess) {
             try {
-                const pkgCoverage = JSON.parse(this.fs.readFileSync(filePath, 'utf8'));
+                const pkgCoverage =
+                    coverage ||
+                    JSON.parse(
+                        this.fs.readFileSync(filePath, 'utf8'),
+                    );
                 console.debug(`📦 Processing coverage for ${pkgName}`);
 
                 // Extract coverage percentages from the coverage JSON (c8/istanbul format)
-                const coverage = this.parseCoverageFromSummary(pkgCoverage);
-                packages.push({ package: pkgName, coverage });
+                const parsedCoverage = this.parseCoverageFromSummary(pkgCoverage);
+                packages.push({ package: pkgName, coverage: parsedCoverage });
             } catch (error) {
                 console.warn(
                     `⚠️ Failed to parse coverage for ${pkgName}: ${error.message}`,

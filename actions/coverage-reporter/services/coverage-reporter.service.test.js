@@ -74,6 +74,75 @@ All files          |   85.5 |    78.2 |   92.1 |   87.3 |
     });
   });
 
+  describe('createPackageComparisonSummary', () => {
+    it('should build per-metric diffs against baseline', () => {
+      const currentCoverage = {
+        type: 'packages',
+        packages: [
+          {
+            package: 'pkg-a',
+            coverage: {
+              statements: 80,
+              branches: 70,
+              functions: 90,
+              lines: 85,
+            },
+          },
+          {
+            package: 'pkg-b',
+            coverage: {
+              statements: 90,
+              branches: 92,
+              functions: 88,
+              lines: 94,
+            },
+          },
+        ],
+      };
+
+      const baselineCoverage = {
+        type: 'packages',
+        packages: [
+          {
+            package: 'pkg-a',
+            coverage: {
+              statements: 75,
+              branches: 70,
+              functions: 85,
+              lines: 80,
+            },
+          },
+        ],
+      };
+
+      const summary = service.createPackageComparisonSummary(
+        currentCoverage,
+        baselineCoverage,
+        80,
+      );
+
+      const pkgA = summary.packages.find((pkg) => pkg.package === 'pkg-a');
+      const pkgB = summary.packages.find((pkg) => pkg.package === 'pkg-b');
+
+      assert.deepStrictEqual(pkgA.diff, {
+        statements: 5,
+        branches: 0,
+        functions: 5,
+        lines: 5,
+        overall: 3.75,
+      });
+      assert.strictEqual(pkgA.status, 'pass');
+      assert.strictEqual(pkgB.diff, null);
+
+      assert.strictEqual(summary.diff.statements, 5);
+      assert.strictEqual(summary.diff.branches, 0);
+      assert.strictEqual(summary.diff.functions, 5);
+      assert.strictEqual(summary.diff.lines, 5);
+      assert(Math.abs(summary.diff.overall - 8.625) < 1e-10);
+      assert.strictEqual(summary.status, 'pass');
+    });
+  });
+
   describe('generateMarkdownReport', () => {
     it('should generate markdown report with coverage data', () => {
       const coverage = {
