@@ -99,4 +99,16 @@ describe('GitUtil', () => {
     // -- Assert
     assert.strictEqual(exists, false);
   });
+
+  it('should push tags to remote with --follow-tags', () => {
+    // -- Arrange & Act
+    gitService.pushTags();
+
+    // -- Assert
+    assert.strictEqual(mockShellService.exec.mock.callCount(), 1);
+    assert.strictEqual(
+      mockShellService.exec.mock.calls[0].arguments[0],
+      'git push --follow-tags',
+    );
+  });
 });

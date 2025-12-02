@@ -39,6 +39,7 @@ describe('ReleaseService', () => {
       checkRemoteBranch: mock.fn(() => false),
       createBranch: mock.fn(),
       pushBranch: mock.fn(),
+      pushTags: mock.fn(),
     };
 
     // Create release service with mocked dependencies
@@ -59,40 +60,79 @@ describe('ReleaseService', () => {
   describe('planRelease', () => {
     it('should plan simple release without maintenance branches', () => {
       const ctx = { isMultiRelease: false, isMainBranch: true };
-
-      const steps = releaseService.planRelease(ctx);
-
-      assert.strictEqual(steps.length, 1);
-      assert.strictEqual(steps[0].type, 'exec');
-      assert.ok(steps[0].cmd.includes('changeset publish'));
-    });
-
-    it('should plan release with maintenance branches when plan file exists', () => {
-      const ctx = { isMultiRelease: true, isMainBranch: true };
-      mockFsApi.existsSync.mock.mockImplementation(() => true);
-      mockFsApi.readFileSync.mock.mockImplementation(() =>
-        JSON.stringify({
-          '@scope/lib-one': { branchName: 'release/lib-one@2.0.0' },
-        }),
-      );
+      mockShellService.exec.mock.mockImplementation(() => {
+        throw new Error('File not found');
+      });
 
       const steps = releaseService.planRelease(ctx);
 
       assert.strictEqual(steps.length, 2);
+      assert.strictEqual(steps[0].type, 'exec');
+      assert.ok(steps[0].cmd.includes('changeset publish'));
+      assert.strictEqual(steps[1].type, 'push-tags');
+    });
+
+    it('should read plan file from git history using git show', () => {
+      const ctx = { isMultiRelease: true, isMainBranch: true };
+      const planData = {
+        '@scope/lib-one': { branchName: 'release/lib-one@2.0.0' },
+      };
+      mockShellService.exec.mock.mockImplementation((cmd) => {
+        if (cmd.includes('git show HEAD:.release-meta')) {
+          return { stdout: JSON.stringify(planData) };
+        }
+        return { stdout: '' };
+      });
+
+      const steps = releaseService.planRelease(ctx);
+
+      // Verify git show was called
+      const gitShowCall = mockShellService.exec.mock.calls.find((call) =>
+        call.arguments[0].includes('git show HEAD:.release-meta'),
+      );
+      assert.ok(gitShowCall, 'Should call git show to read plan from history');
+
+      assert.strictEqual(steps.length, 3);
+      assert.strictEqual(steps[0].type, 'ensure-maintenance-branch');
+      assert.strictEqual(steps[0].branchName, 'release/lib-one@2.0.0');
+      assert.strictEqual(steps[1].type, 'exec');
+      assert.strictEqual(steps[2].type, 'push-tags');
+    });
+
+    it('should plan release with maintenance branches when plan file exists', () => {
+      const ctx = { isMultiRelease: true, isMainBranch: true };
+      mockShellService.exec.mock.mockImplementation((cmd) => {
+        if (cmd.includes('git show HEAD:.release-meta')) {
+          return {
+            stdout: JSON.stringify({
+              '@scope/lib-one': { branchName: 'release/lib-one@2.0.0' },
+            }),
+          };
+        }
+        return { stdout: '' };
+      });
+
+      const steps = releaseService.planRelease(ctx);
+
+      assert.strictEqual(steps.length, 3);
       assert.strictEqual(steps[0].type, 'ensure-maintenance-branch');
       assert.strictEqual(steps[0].branchName, 'release/lib-one@2.0.0');
       assert.strictEqual(steps[1].type, 'exec');
       assert.ok(steps[1].cmd.includes('changeset publish'));
+      assert.strictEqual(steps[2].type, 'push-tags');
     });
 
     it('should only plan publish step when no plan file exists', () => {
       const ctx = { isMultiRelease: true, isMainBranch: true };
-      mockFsApi.existsSync.mock.mockImplementation(() => false);
+      mockShellService.exec.mock.mockImplementation(() => {
+        throw new Error('File not found in git history');
+      });
 
       const steps = releaseService.planRelease(ctx);
 
-      assert.strictEqual(steps.length, 1);
+      assert.strictEqual(steps.length, 2);
       assert.strictEqual(steps[0].type, 'exec');
+      assert.strictEqual(steps[1].type, 'push-tags');
     });
   });
 
@@ -120,6 +160,15 @@ describe('ReleaseService', () => {
       assert.strictEqual(mockGitService.checkRemoteBranch.mock.callCount(), 1);
       assert.strictEqual(mockGitService.createBranch.mock.callCount(), 1);
       assert.strictEqual(mockGitService.pushBranch.mock.callCount(), 1);
+    });
+
+    it('should execute push-tags step', () => {
+      const steps = [{ type: 'push-tags' }];
+      mockGitService.pushTags = mock.fn();
+
+      releaseService.executeSteps(steps);
+
+      assert.strictEqual(mockGitService.pushTags.mock.callCount(), 1);
     });
 
     it('should handle unknown step type', () => {
@@ -271,15 +320,22 @@ describe('ReleaseService', () => {
       mockGitService.getChangedFiles.mock.mockImplementation(() =>
         Promise.resolve(['packages/lib-one/package.json']),
       );
+      mockShellService.exec.mock.mockImplementation((cmd) => {
+        if (cmd.includes('git show HEAD:.release-meta')) {
+          throw new Error('File not found');
+        }
+        return { stdout: '' };
+      });
 
       await releaseService.run(env);
 
-      assert.strictEqual(mockShellService.exec.mock.callCount(), 1);
-      assert.ok(
-        mockShellService.exec.mock.calls[0].arguments[0].includes(
-          'changeset publish',
-        ),
+      // Should call git show (fails) and changeset publish
+      assert.strictEqual(mockShellService.exec.mock.callCount(), 2);
+      const publishCall = mockShellService.exec.mock.calls.find((call) =>
+        call.arguments[0].includes('changeset publish'),
       );
+      assert.ok(publishCall, 'Should call changeset publish');
+      assert.strictEqual(mockGitService.pushTags.mock.callCount(), 1);
     });
   });
 

@@ -18,15 +18,23 @@ export class ReleaseService {
   planRelease(ctx) {
     const { isMultiRelease, isMainBranch } = ctx;
     const steps = [];
-    const planFilePath = this.path.resolve(
-      process.cwd(),
-      '.release-meta',
-      'maintenance-branches.json',
-    );
-    const planFileExists = this.fs.existsSync(planFilePath);
-    const plan = planFileExists
-      ? JSON.parse(this.fs.readFileSync(planFilePath, 'utf-8'))
-      : {};
+
+    // Read plan from git history (HEAD commit) instead of filesystem
+    // because filesystem contains the reset empty plan from current run
+    let plan = {};
+    try {
+      const result = this.shell.exec(
+        'git show HEAD:.release-meta/maintenance-branches.json',
+        { stdio: 'pipe' },
+      );
+      plan = JSON.parse(result.stdout);
+      console.debug('📋 Read plan from git history:', plan);
+      // eslint-disable-next-line no-unused-vars
+    } catch (__error) {
+      // File doesn't exist in git history or error reading it
+      console.debug('ℹ️ No plan file found in git history, using empty plan.');
+      plan = {};
+    }
 
     if (
       Object.getOwnPropertyNames(plan).length > 0 &&
@@ -40,6 +48,7 @@ export class ReleaseService {
     }
 
     steps.push({ type: 'exec', cmd: 'pnpm changeset publish' });
+    steps.push({ type: 'push-tags' });
 
     console.debug(
       `planned release steps: ${steps.map((s) => s.type).join(', ')}`,
@@ -62,6 +71,11 @@ export class ReleaseService {
 
         case 'ensure-maintenance-branch': {
           this.ensureMaintenanceBranch(step.branchName);
+          break;
+        }
+
+        case 'push-tags': {
+          this.git.pushTags();
           break;
         }
 

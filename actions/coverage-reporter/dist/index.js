@@ -27659,6 +27659,12 @@ class GitUtil {
     this.shell.exec(`git push origin ${branchName}`);
   }
 
+  pushTags() {
+    console.debug('Pushing tags to remote...');
+    this.shell.exec('git push --follow-tags');
+    console.debug('✅ Tags pushed successfully.');
+  }
+
   getChangedFilesBetweenRefs(baseRef, headRef, baseSha, headSha) {
     const strategies = [
       // Strategy 1: Use branch references (most reliable)
