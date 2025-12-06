@@ -42,6 +42,7 @@ describe('ReleaseService', () => {
       checkRemoteBranch: mock.fn(() => false),
       createBranch: mock.fn(),
       pushBranch: mock.fn(),
+      pushTags: mock.fn(),
     };
 
     // Create release service with mocked dependencies
@@ -183,12 +184,16 @@ describe('ReleaseService', () => {
       it('should create a new release branch based on the plan file', async () => {
         // -- Arrange
         process.env.GITHUB_REF_NAME = 'main';
-        mockFsApi.existsSync.mock.mockImplementation(() => true);
-        mockFsApi.readFileSync.mock.mockImplementation(() =>
-          JSON.stringify({
-            '@scope/lib-one': { branchName: 'release/lib-one@1.0.0' },
-          }),
-        );
+        mockShellService.exec.mock.mockImplementation((cmd) => {
+          if (cmd.includes('git show')) {
+            return {
+              stdout: JSON.stringify({
+                '@scope/lib-one': { branchName: 'release/lib-one@1.0.0' },
+              }),
+            };
+          }
+          return { stdout: '' };
+        });
         mockGitService.getChangedFiles.mock.mockImplementation(() =>
           Promise.resolve(['packages/lib-one/package.json']),
         );
@@ -209,12 +214,16 @@ describe('ReleaseService', () => {
       it('should skip branch creation if branch already exists', async () => {
         // -- Arrange
         process.env.GITHUB_REF_NAME = 'main';
-        mockFsApi.existsSync.mock.mockImplementation(() => true);
-        mockFsApi.readFileSync.mock.mockImplementation(() =>
-          JSON.stringify({
-            '@scope/lib-one': { branchName: 'release/lib-one@1.0.0' },
-          }),
-        );
+        mockShellService.exec.mock.mockImplementation((cmd) => {
+          if (cmd.includes('git show')) {
+            return {
+              stdout: JSON.stringify({
+                '@scope/lib-one': { branchName: 'release/lib-one@1.0.0' },
+              }),
+            };
+          }
+          return { stdout: '' };
+        });
         mockGitService.getChangedFiles.mock.mockImplementation(() =>
           Promise.resolve(['packages/lib-one/package.json']),
         );
@@ -277,9 +286,9 @@ describe('configureAuthEnv', () => {
 
   it('applies provided npm and github tokens to env and process', () => {
     const env = {
-      INPUT_NODE_AUTH_TOKEN: 'node-token',
-      INPUT_GITHUB_TOKEN: 'gh-token',
-      INPUT_ENABLE_MULTI_RELEASE: 'true',
+      'INPUT_NODE-AUTH-TOKEN': 'node-token',
+      'INPUT_GITHUB-TOKEN': 'gh-token',
+      'INPUT_ENABLE-MULTI-RELEASE': 'true',
     };
 
     const result = configureAuthEnv(env);

@@ -75,7 +75,7 @@ class VersionService {
   constructor(shellUtil, fsApi, gitUtil) {
     this.shell = shellUtil;
     this.fs = fsApi;
-    this.git = gitUtil || new _systemcraft_stack_actions_utils__WEBPACK_IMPORTED_MODULE_1__/* .GitUtil */ .Hc(this.shell)
+    this.git = gitUtil || new _systemcraft_stack_actions_utils__WEBPACK_IMPORTED_MODULE_1__/* .GitUtil */ .Hc(this.shell);
   }
 
   static create(shell, fsApi) {
@@ -161,10 +161,9 @@ class VersionService {
     console.debug('📦 Running changeset version...');
     this.runChangesetVersion();
 
-    this.git.gitStatus()
+    this.git.gitStatus();
 
     console.debug('✅ Version script completed successfully.');
-
   }
 }
 
@@ -367,10 +366,9 @@ class GitUtil {
   }
 
   gitStatus() {
-    console.debug('Running git status...')
-    this.shell.exec('git status')
+    console.debug('Running git status...');
+    this.shell.exec('git status');
     console.debug('✅ Git status Run.');
-
   }
 
   getChangedFilesBetweenRefs(baseRef, headRef, baseSha, headSha) {
@@ -453,7 +451,6 @@ class GitUtil {
       throw new Error(`Failed to fetch branch ${ref}: ${error.message}`);
     }
   }
-
 
   async downloadLatestArtifact({ owner, repoName, artifactName }, outputPath) {
     this.lastArtifactHtmlUrl = null;

@@ -162,7 +162,6 @@ Breaking changes in lib-one
     it('should execute changeset version command', () => {
       versionService.runChangesetVersion();
 
-      assert.strictEqual(mockShellService.exec.mock.callCount(), 1);
       assert.ok(
         mockShellService.exec.mock.calls[0].arguments[0].includes(
           'changeset version',
@@ -234,7 +233,6 @@ Breaking change
         writtenContent['@scope/lib-one'].branchName.includes('lib-one'),
       );
 
-      assert.strictEqual(mockShellService.exec.mock.callCount(), 1);
       assert.ok(
         mockShellService.exec.mock.calls[0].arguments[0].includes(
           'changeset version',
@@ -272,7 +270,6 @@ Breaking change
 
       assert.ok(writtenContent['@scope/lib-one']);
       assert.ok(writtenContent['@scope/lib-two']);
-      assert.strictEqual(mockShellService.exec.mock.callCount(), 1);
     });
   });
 

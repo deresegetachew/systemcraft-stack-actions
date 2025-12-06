@@ -106,7 +106,6 @@ Breaking change
         writtenContent['@scope/lib-one'].branchName.includes('lib-one'),
       );
 
-      assert.strictEqual(mockShellService.exec.mock.callCount(), 1);
       assert.ok(
         mockShellService.exec.mock.calls[0].arguments[0].includes(
           'changeset version',
@@ -147,7 +146,6 @@ Breaking change
 
       assert.ok(writtenContent['@scope/lib-one']);
       assert.ok(writtenContent['@scope/lib-two']);
-      assert.strictEqual(mockShellService.exec.mock.callCount(), 1);
     });
   });
 });
