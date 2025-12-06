@@ -61,6 +61,12 @@ export class GitUtil {
     console.debug('✅ Tags pushed successfully.');
   }
 
+  gitStatus() {
+    console.debug('Running git status...');
+    this.shell.exec('git status');
+    console.debug('✅ Git status Run.');
+  }
+
   getChangedFilesBetweenRefs(baseRef, headRef, baseSha, headSha) {
     const strategies = [
       // Strategy 1: Use branch references (most reliable)

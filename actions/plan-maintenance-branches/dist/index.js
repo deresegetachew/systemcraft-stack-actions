@@ -72,9 +72,10 @@ __webpack_async_result__();
 
 
 class VersionService {
-  constructor(shellUtil, fsApi) {
+  constructor(shellUtil, fsApi, gitUtil) {
     this.shell = shellUtil;
     this.fs = fsApi;
+    this.git = gitUtil || new _systemcraft_stack_actions_utils__WEBPACK_IMPORTED_MODULE_1__/* .GitUtil */ .Hc(this.shell)
   }
 
   static create(shell, fsApi) {
@@ -126,6 +127,13 @@ class VersionService {
     console.debug(`✅ Plan written to: ${planFilePath}`);
   }
 
+  /**
+   * expected result of running changeset version
+   * packages have updated versions
+   * changelogs updated
+   * dependency ranges updated
+   * no pending changesets
+   */
   runChangesetVersion() {
     this.shell.exec('pnpm changeset version');
   }
@@ -153,7 +161,10 @@ class VersionService {
     console.debug('📦 Running changeset version...');
     this.runChangesetVersion();
 
+    this.git.gitStatus()
+
     console.debug('✅ Version script completed successfully.');
+
   }
 }
 
@@ -171,16 +182,18 @@ function createVersionService(shell, fsApi) {
 
 // EXPORTS
 __nccwpck_require__.d(__webpack_exports__, {
+  Hc: () => (/* reexport */ GitUtil),
   Nb: () => (/* reexport */ PackageUtil),
   Rs: () => (/* reexport */ ShellUtil),
   rP: () => (/* reexport */ getPackageInfo),
   kK: () => (/* reexport */ loadChangesetFiles)
 });
 
-// UNUSED EXPORTS: FSUtil, GitUtil, extractMajorBumpPackagesFromChangesets, getActionInput, getBooleanActionInput, sanitizePackageDir
+// UNUSED EXPORTS: FSUtil, extractMajorBumpPackagesFromChangesets, getActionInput, getBooleanActionInput, sanitizePackageDir
 
 // EXTERNAL MODULE: external "node:fs"
 var external_node_fs_ = __nccwpck_require__(24);
+var external_node_fs_namespaceObject = /*#__PURE__*/__nccwpck_require__.t(external_node_fs_, 2);
 // EXTERNAL MODULE: external "node:path"
 var external_node_path_ = __nccwpck_require__(760);
 ;// CONCATENATED MODULE: ../../libs/utils/fs/fs.util.js
@@ -296,7 +309,7 @@ class GitUtil {
   constructor(shellService, githubToken = null, fsApi = null) {
     this.shell = shellService;
     this.githubToken = githubToken;
-    this.fs = fsApi || fs;
+    this.fs = fsApi || external_node_fs_namespaceObject;
     this.refreshEnvContext();
     this.lastArtifactHtmlUrl = null;
   }
@@ -351,6 +364,13 @@ class GitUtil {
     console.debug('Pushing tags to remote...');
     this.shell.exec('git push --follow-tags');
     console.debug('✅ Tags pushed successfully.');
+  }
+
+  gitStatus() {
+    console.debug('Running git status...')
+    this.shell.exec('git status')
+    console.debug('✅ Git status Run.');
+
   }
 
   getChangedFilesBetweenRefs(baseRef, headRef, baseSha, headSha) {
@@ -433,6 +453,7 @@ class GitUtil {
       throw new Error(`Failed to fetch branch ${ref}: ${error.message}`);
     }
   }
+
 
   async downloadLatestArtifact({ owner, repoName, artifactName }, outputPath) {
     this.lastArtifactHtmlUrl = null;

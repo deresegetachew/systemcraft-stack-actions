@@ -468,6 +468,13 @@ class GitUtil {
     console.debug('✅ Tags pushed successfully.');
   }
 
+  gitStatus() {
+    console.debug('Running git status...')
+    this.shell.exec('git status')
+    console.debug('✅ Git status Run.');
+
+  }
+
   getChangedFilesBetweenRefs(baseRef, headRef, baseSha, headSha) {
     const strategies = [
       // Strategy 1: Use branch references (most reliable)
@@ -548,6 +555,7 @@ class GitUtil {
       throw new Error(`Failed to fetch branch ${ref}: ${error.message}`);
     }
   }
+
 
   async downloadLatestArtifact({ owner, repoName, artifactName }, outputPath) {
     this.lastArtifactHtmlUrl = null;

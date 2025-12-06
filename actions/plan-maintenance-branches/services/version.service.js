@@ -4,11 +4,13 @@ import {
   loadChangesetFiles,
   getPackageInfo,
   PackageUtil,
+  GitUtil,
 } from '@systemcraft-stack-actions/utils';
 export class VersionService {
-  constructor(shellUtil, fsApi) {
+  constructor(shellUtil, fsApi, gitUtil) {
     this.shell = shellUtil;
     this.fs = fsApi;
+    this.git = gitUtil || new GitUtil(this.shell);
   }
 
   static create(shell, fsApi) {
@@ -60,6 +62,13 @@ export class VersionService {
     console.debug(`✅ Plan written to: ${planFilePath}`);
   }
 
+  /**
+   * expected result of running changeset version
+   * packages have updated versions
+   * changelogs updated
+   * dependency ranges updated
+   * no pending changesets
+   */
   runChangesetVersion() {
     this.shell.exec('pnpm changeset version');
   }
@@ -86,6 +95,8 @@ export class VersionService {
 
     console.debug('📦 Running changeset version...');
     this.runChangesetVersion();
+
+    this.git.gitStatus();
 
     console.debug('✅ Version script completed successfully.');
   }
