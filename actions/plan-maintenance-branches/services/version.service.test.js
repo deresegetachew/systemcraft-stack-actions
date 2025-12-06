@@ -6,6 +6,7 @@ import { VersionService } from './version.service.js';
 describe('VersionService', () => {
   let mockFsApi;
   let mockShellService;
+  let mockGitUtil;
   let versionService;
   let originalEnv;
 
@@ -26,7 +27,18 @@ describe('VersionService', () => {
       exec: mock.fn(() => ({ stdout: '' })),
     };
 
-    versionService = VersionService.create(mockShellService, mockFsApi);
+    // Mock git util
+    mockGitUtil = {
+      gitAdd: mock.fn(),
+      gitCommit: mock.fn(),
+      gitStatus: mock.fn(),
+    };
+
+    versionService = new VersionService(
+      mockShellService,
+      mockFsApi,
+      mockGitUtil,
+    );
   });
 
   afterEach(() => {
@@ -180,7 +192,7 @@ Breaking changes in lib-one
       assert.strictEqual(
         mockShellService.exec.mock.callCount(),
         0,
-        'Should not run changeset version',
+        'Should not run changeset version or git commands when no changesets',
       );
     });
 
@@ -233,10 +245,31 @@ Breaking change
         writtenContent['@scope/lib-one'].branchName.includes('lib-one'),
       );
 
+      // Should run changeset version and commit everything
+      assert.strictEqual(
+        mockShellService.exec.mock.callCount(),
+        1,
+        'Should only run changeset version',
+      );
       assert.ok(
         mockShellService.exec.mock.calls[0].arguments[0].includes(
           'changeset version',
         ),
+      );
+
+      // Should use git util for commits
+      assert.strictEqual(mockGitUtil.gitAdd.mock.callCount(), 1);
+      assert.strictEqual(mockGitUtil.gitAdd.mock.calls[0].arguments[0], '.');
+      assert.strictEqual(mockGitUtil.gitCommit.mock.callCount(), 1);
+      assert.ok(
+        mockGitUtil.gitCommit.mock.calls[0].arguments[0].includes(
+          'version packages',
+        ),
+      );
+      assert.strictEqual(
+        mockGitUtil.gitStatus.mock.callCount(),
+        2,
+        'Should call gitStatus before and after commit',
       );
     });
 

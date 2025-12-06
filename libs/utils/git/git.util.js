@@ -61,6 +61,14 @@ export class GitUtil {
     console.debug('✅ Tags pushed successfully.');
   }
 
+  gitAdd(pathSpec = '.') {
+    this.shell.exec(`git add ${pathSpec}`);
+  }
+
+  gitCommit(message) {
+    this.shell.exec(`git commit -m "${message}"`);
+  }
+
   gitStatus() {
     console.debug('Running git status...');
     this.shell.exec('git status');

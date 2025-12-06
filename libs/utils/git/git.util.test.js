@@ -111,4 +111,40 @@ describe('GitUtil', () => {
       'git push --follow-tags',
     );
   });
+
+  it('should add files to git staging with default path', () => {
+    // -- Arrange & Act
+    gitService.gitAdd();
+
+    // -- Assert
+    assert.strictEqual(mockShellService.exec.mock.callCount(), 1);
+    assert.strictEqual(
+      mockShellService.exec.mock.calls[0].arguments[0],
+      'git add .',
+    );
+  });
+
+  it('should add specific files to git staging', () => {
+    // -- Arrange & Act
+    gitService.gitAdd('src/*.js');
+
+    // -- Assert
+    assert.strictEqual(mockShellService.exec.mock.callCount(), 1);
+    assert.strictEqual(
+      mockShellService.exec.mock.calls[0].arguments[0],
+      'git add src/*.js',
+    );
+  });
+
+  it('should commit with message', () => {
+    // -- Arrange & Act
+    gitService.gitCommit('test commit message');
+
+    // -- Assert
+    assert.strictEqual(mockShellService.exec.mock.callCount(), 1);
+    assert.strictEqual(
+      mockShellService.exec.mock.calls[0].arguments[0],
+      'git commit -m "test commit message"',
+    );
+  });
 });

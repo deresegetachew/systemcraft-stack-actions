@@ -127,13 +127,6 @@ class VersionService {
     console.debug(`✅ Plan written to: ${planFilePath}`);
   }
 
-  /**
-   * expected result of running changeset version
-   * packages have updated versions
-   * changelogs updated
-   * dependency ranges updated
-   * no pending changesets
-   */
   runChangesetVersion() {
     this.shell.exec('pnpm changeset version');
   }
@@ -158,10 +151,17 @@ class VersionService {
     const plan = this.generateMaintenancePlan(majorBumpPackages, baseDir);
     this.writePlanFile(plan, baseDir);
 
+    // Run changeset version to update package.json and CHANGELOG files
     console.debug('📦 Running changeset version...');
     this.runChangesetVersion();
-
     this.git.gitStatus();
+
+    // Commit all changes (plan file + versioned files)
+    console.debug('📝 Committing changes...');
+    this.git.gitAdd('.');
+    this.git.gitCommit('chore: version packages and add maintenance branch plan');
+    this.git.gitStatus();
+    console.debug('✅ Changes committed.');
 
     console.debug('✅ Version script completed successfully.');
   }
@@ -363,6 +363,14 @@ class GitUtil {
     console.debug('Pushing tags to remote...');
     this.shell.exec('git push --follow-tags');
     console.debug('✅ Tags pushed successfully.');
+  }
+
+  gitAdd(pathSpec = '.') {
+    this.shell.exec(`git add ${pathSpec}`);
+  }
+
+  gitCommit(message) {
+    this.shell.exec(`git commit -m "${message}"`);
   }
 
   gitStatus() {
