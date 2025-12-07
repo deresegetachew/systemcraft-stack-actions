@@ -131,6 +131,8 @@ export class ReleaseService {
       isChangesetReleaseBranch,
     } = ctx;
 
+    console.debug('ctx', { ctx });
+
     // Skip if on changeset-release branch (Version PR branch)
     if (isChangesetReleaseBranch) {
       console.warn(
