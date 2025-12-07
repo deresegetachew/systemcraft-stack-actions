@@ -151,7 +151,7 @@ class VersionService {
     const plan = this.generateMaintenancePlan(majorBumpPackages, baseDir);
     this.writePlanFile(plan, baseDir);
 
-    this.git.gitStatus()
+    this.git.gitStatus();
     console.debug('✅ Version script completed successfully.');
   }
 }

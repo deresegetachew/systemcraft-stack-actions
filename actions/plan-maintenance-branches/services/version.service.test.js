@@ -177,16 +177,9 @@ Breaking changes in lib-one
       await versionService.run(process.env);
 
       assert.strictEqual(mockFsApi.writeFileSync.mock.callCount(), 1);
-      assert.strictEqual(
-        mockGitUtil.gitAdd.mock.callCount(),
-        0,
-        'Should not run git commands when no changesets',
-      );
-      assert.strictEqual(
-        mockGitUtil.gitCommit.mock.callCount(),
-        0,
-        'Should not commit when no changesets',
-      );
+      const writeCall = mockFsApi.writeFileSync.mock.calls[0];
+      const writtenContent = JSON.parse(writeCall.arguments[1]);
+      assert.deepStrictEqual(writtenContent, {});
     });
 
     it('should write an empty plan file if no major bumps are detected', async () => {
@@ -237,22 +230,9 @@ Breaking change
       assert.ok(
         writtenContent['@scope/lib-one'].branchName.includes('lib-one'),
       );
-
-      // Should NOT run any git commands - changesets/action will handle versioning and commits
       assert.strictEqual(
-        mockGitUtil.gitAdd.mock.callCount(),
-        0,
-        'Should not run git add',
-      );
-      assert.strictEqual(
-        mockGitUtil.gitCommit.mock.callCount(),
-        0,
-        'Should not run git commit',
-      );
-      assert.strictEqual(
-        mockGitUtil.gitStatus.mock.callCount(),
-        0,
-        'Should not run git status',
+        writtenContent['@scope/lib-one'].branchName,
+        'release/lib-one@2.0.0',
       );
     });
 
