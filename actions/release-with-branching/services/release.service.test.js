@@ -247,6 +247,7 @@ describe('ReleaseService', () => {
         isMultiRelease: true,
         isMainBranch: true,
         isReleaseBranch: false,
+        isChangesetReleaseBranch: false,
       };
       mockGitService.getChangedFiles.mock.mockImplementation(() =>
         Promise.resolve(['packages/lib-one/package.json']),
@@ -263,6 +264,7 @@ describe('ReleaseService', () => {
         isMultiRelease: true,
         isMainBranch: false,
         isReleaseBranch: true,
+        isChangesetReleaseBranch: false,
       };
       mockGitService.getChangedFiles.mock.mockImplementation(() =>
         Promise.resolve(['packages/lib-one/CHANGELOG.md']),
@@ -273,12 +275,27 @@ describe('ReleaseService', () => {
       assert.strictEqual(result.proceedWithRelease, true);
     });
 
+    it('should skip release on changeset-release branch (Version PR)', async () => {
+      const ctx = {
+        branchName: 'changeset-release/main',
+        isMultiRelease: true,
+        isMainBranch: false,
+        isReleaseBranch: false,
+        isChangesetReleaseBranch: true,
+      };
+
+      const result = await releaseService.validatePreconditions(ctx);
+
+      assert.strictEqual(result.proceedWithRelease, false);
+    });
+
     it('should skip release on feature branch in multi-release mode', async () => {
       const ctx = {
         branchName: 'feature/test',
         isMultiRelease: true,
         isMainBranch: false,
         isReleaseBranch: false,
+        isChangesetReleaseBranch: false,
       };
 
       const result = await releaseService.validatePreconditions(ctx);
@@ -292,6 +309,7 @@ describe('ReleaseService', () => {
         isMultiRelease: false,
         isMainBranch: true,
         isReleaseBranch: false,
+        isChangesetReleaseBranch: false,
       };
       mockGitService.getChangedFiles.mock.mockImplementation(() =>
         Promise.resolve(['src/feature.js', 'docs/README.md']),

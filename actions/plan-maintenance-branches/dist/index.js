@@ -41,7 +41,10 @@ async function main(
   fsApi = node_fs__WEBPACK_IMPORTED_MODULE_0__,
   shellUtil = new _libs_utils_index_js__WEBPACK_IMPORTED_MODULE_1__/* .ShellUtil */ .Rs(),
 ) {
-  const maintenancePlanService = _services_maintenance_plan_service_js__WEBPACK_IMPORTED_MODULE_2__/* .MaintenancePlanService */ .O.create(shellUtil, fsApi);
+  const maintenancePlanService = _services_maintenance_plan_service_js__WEBPACK_IMPORTED_MODULE_2__/* .MaintenancePlanService */ .O.create(
+    shellUtil,
+    fsApi,
+  );
   return await maintenancePlanService.run(env);
 }
 

@@ -214,17 +214,35 @@ class ReleaseService {
       branchName && branchName.startsWith('release/'),
     );
     const isMainBranch = branchName === 'main';
+    const isChangesetReleaseBranch = Boolean(
+      branchName && branchName.startsWith('changeset-release/'),
+    );
 
     return {
       isMultiRelease,
       branchName,
       isReleaseBranch,
       isMainBranch,
+      isChangesetReleaseBranch,
     };
   }
 
   async validatePreconditions(ctx) {
-    const { branchName, isMultiRelease, isReleaseBranch, isMainBranch } = ctx;
+    const {
+      branchName,
+      isMultiRelease,
+      isReleaseBranch,
+      isMainBranch,
+      isChangesetReleaseBranch,
+    } = ctx;
+
+    // Skip if on changeset-release branch (Version PR branch)
+    if (isChangesetReleaseBranch) {
+      console.warn(
+        `⏭️  Skipping release: on Version PR branch ${branchName}. Release will happen after PR is merged.`,
+      );
+      return { proceedWithRelease: false };
+    }
 
     // Check branch conditions first to avoid unnecessary git calls
     if (!isMainBranch && !isReleaseBranch && isMultiRelease) {
