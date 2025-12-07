@@ -170,18 +170,6 @@ Breaking changes in lib-one
     });
   });
 
-  describe('runChangesetVersion', () => {
-    it('should execute changeset version command', () => {
-      versionService.runChangesetVersion();
-
-      assert.ok(
-        mockShellService.exec.mock.calls[0].arguments[0].includes(
-          'changeset version',
-        ),
-      );
-    });
-  });
-
   describe('run', () => {
     it('should skip if no changesets are found', async () => {
       mockFsApi.existsSync.mock.mockImplementation(() => false);
@@ -190,9 +178,14 @@ Breaking changes in lib-one
 
       assert.strictEqual(mockFsApi.writeFileSync.mock.callCount(), 1);
       assert.strictEqual(
-        mockShellService.exec.mock.callCount(),
+        mockGitUtil.gitAdd.mock.callCount(),
         0,
-        'Should not run changeset version or git commands when no changesets',
+        'Should not run git commands when no changesets',
+      );
+      assert.strictEqual(
+        mockGitUtil.gitCommit.mock.callCount(),
+        0,
+        'Should not commit when no changesets',
       );
     });
 
@@ -245,31 +238,21 @@ Breaking change
         writtenContent['@scope/lib-one'].branchName.includes('lib-one'),
       );
 
-      // Should run changeset version and commit everything
+      // Should NOT run any git commands - changesets/action will handle versioning and commits
       assert.strictEqual(
-        mockShellService.exec.mock.callCount(),
-        1,
-        'Should only run changeset version',
+        mockGitUtil.gitAdd.mock.callCount(),
+        0,
+        'Should not run git add',
       );
-      assert.ok(
-        mockShellService.exec.mock.calls[0].arguments[0].includes(
-          'changeset version',
-        ),
-      );
-
-      // Should use git util for commits
-      assert.strictEqual(mockGitUtil.gitAdd.mock.callCount(), 1);
-      assert.strictEqual(mockGitUtil.gitAdd.mock.calls[0].arguments[0], '.');
-      assert.strictEqual(mockGitUtil.gitCommit.mock.callCount(), 1);
-      assert.ok(
-        mockGitUtil.gitCommit.mock.calls[0].arguments[0].includes(
-          'version packages',
-        ),
+      assert.strictEqual(
+        mockGitUtil.gitCommit.mock.callCount(),
+        0,
+        'Should not run git commit',
       );
       assert.strictEqual(
         mockGitUtil.gitStatus.mock.callCount(),
-        2,
-        'Should call gitStatus before and after commit',
+        0,
+        'Should not run git status',
       );
     });
 

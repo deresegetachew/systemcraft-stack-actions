@@ -127,9 +127,9 @@ class VersionService {
     console.debug(`✅ Plan written to: ${planFilePath}`);
   }
 
-  runChangesetVersion() {
-    this.shell.exec('pnpm changeset version');
-  }
+  // runChangesetVersion() {
+  //   this.shell.exec('pnpm changeset version');
+  // }
 
   async run(env = process.env, baseDir = process.cwd()) {
     console.debug('🔄 Starting version script...');
@@ -150,18 +150,6 @@ class VersionService {
 
     const plan = this.generateMaintenancePlan(majorBumpPackages, baseDir);
     this.writePlanFile(plan, baseDir);
-
-    // Run changeset version to update package.json and CHANGELOG files
-    console.debug('📦 Running changeset version...');
-    this.runChangesetVersion();
-    this.git.gitStatus();
-
-    // Commit all changes (plan file + versioned files)
-    console.debug('📝 Committing changes...');
-    this.git.gitAdd('.');
-    this.git.gitCommit('chore: version packages and add maintenance branch plan');
-    this.git.gitStatus();
-    console.debug('✅ Changes committed.');
 
     console.debug('✅ Version script completed successfully.');
   }
