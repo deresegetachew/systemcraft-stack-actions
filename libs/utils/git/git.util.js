@@ -72,7 +72,23 @@ export class GitUtil {
   gitStatus() {
     console.debug('Running git status...');
     this.shell.exec('git status');
-    console.debug('✅ Git status Run.');
+    console.debug('�u2705 Git status Run.');
+  }
+
+  gitStashPush(message, pathSpec) {
+    const cmd = pathSpec
+      ? `git stash push -m "${message}" -- ${pathSpec}`
+      : `git stash push -m "${message}"`;
+    this.shell.exec(cmd);
+  }
+
+  gitStashPop(stashName) {
+    this.shell.exec(`git stash pop ${stashName}`);
+  }
+
+  gitStashList() {
+    const result = this.shell.exec('git stash list', { stdio: 'pipe' });
+    return result.stdout.trim();
   }
 
   getChangedFilesBetweenRefs(baseRef, headRef, baseSha, headSha) {

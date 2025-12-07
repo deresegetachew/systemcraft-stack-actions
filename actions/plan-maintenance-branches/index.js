@@ -6,7 +6,7 @@ import fs from 'node:fs';
 
 import { ShellUtil } from '../../libs/utils/index.js';
 
-import { VersionService } from './services/version.service.js';
+import { MaintenancePlanService } from './services/maintenance-plan.service.js';
 
 // Main function with default dependencies
 export async function main(
@@ -14,8 +14,11 @@ export async function main(
   fsApi = fs,
   shellUtil = new ShellUtil(),
 ) {
-  const versionService = VersionService.create(shellUtil, fsApi);
-  return await versionService.run(env);
+  const maintenancePlanService = MaintenancePlanService.create(
+    shellUtil,
+    fsApi,
+  );
+  return await maintenancePlanService.run(env);
 }
 
 if (import.meta.url === `file://${process.argv[1]}`) {

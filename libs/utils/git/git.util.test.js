@@ -147,4 +147,62 @@ describe('GitUtil', () => {
       'git commit -m "test commit message"',
     );
   });
+
+  it('should stash with message and path', () => {
+    // -- Arrange & Act
+    gitService.gitStashPush('my-stash-message', '.release-meta/file.json');
+
+    // -- Assert
+    assert.strictEqual(mockShellService.exec.mock.callCount(), 1);
+    assert.strictEqual(
+      mockShellService.exec.mock.calls[0].arguments[0],
+      'git stash push -m "my-stash-message" -- .release-meta/file.json',
+    );
+  });
+
+  it('should stash with message only', () => {
+    // -- Arrange & Act
+    gitService.gitStashPush('my-stash-message');
+
+    // -- Assert
+    assert.strictEqual(mockShellService.exec.mock.callCount(), 1);
+    assert.strictEqual(
+      mockShellService.exec.mock.calls[0].arguments[0],
+      'git stash push -m "my-stash-message"',
+    );
+  });
+
+  it('should pop stash by name', () => {
+    // -- Arrange & Act
+    gitService.gitStashPop('stash@{0}');
+
+    // -- Assert
+    assert.strictEqual(mockShellService.exec.mock.callCount(), 1);
+    assert.strictEqual(
+      mockShellService.exec.mock.calls[0].arguments[0],
+      'git stash pop stash@{0}',
+    );
+  });
+
+  it('should list stashes', () => {
+    // -- Arrange
+    mockShellService.exec.mock.mockImplementation(() => ({
+      stdout:
+        'stash@{0}: On main: my-stash\nstash@{1}: On main: another-stash\n',
+    }));
+
+    // -- Act
+    const stashList = gitService.gitStashList();
+
+    // -- Assert
+    assert.strictEqual(mockShellService.exec.mock.callCount(), 1);
+    assert.strictEqual(
+      mockShellService.exec.mock.calls[0].arguments[0],
+      'git stash list',
+    );
+    assert.strictEqual(
+      stashList,
+      'stash@{0}: On main: my-stash\nstash@{1}: On main: another-stash',
+    );
+  });
 });

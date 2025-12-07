@@ -25,7 +25,7 @@ __nccwpck_require__.a(__webpack_module__, async (__webpack_handle_async_dependen
 /* harmony export */ });
 /* harmony import */ var node_fs__WEBPACK_IMPORTED_MODULE_0__ = __nccwpck_require__(24);
 /* harmony import */ var _libs_utils_index_js__WEBPACK_IMPORTED_MODULE_1__ = __nccwpck_require__(36);
-/* harmony import */ var _services_version_service_js__WEBPACK_IMPORTED_MODULE_2__ = __nccwpck_require__(337);
+/* harmony import */ var _services_maintenance_plan_service_js__WEBPACK_IMPORTED_MODULE_2__ = __nccwpck_require__(586);
 
 /**This file will run if there are changesets to process */
 
@@ -41,8 +41,8 @@ async function main(
   fsApi = node_fs__WEBPACK_IMPORTED_MODULE_0__,
   shellUtil = new _libs_utils_index_js__WEBPACK_IMPORTED_MODULE_1__/* .ShellUtil */ .Rs(),
 ) {
-  const versionService = _services_version_service_js__WEBPACK_IMPORTED_MODULE_2__/* .VersionService */ .I.create(shellUtil, fsApi);
-  return await versionService.run(env);
+  const maintenancePlanService = _services_maintenance_plan_service_js__WEBPACK_IMPORTED_MODULE_2__/* .MaintenancePlanService */ .O.create(shellUtil, fsApi);
+  return await maintenancePlanService.run(env);
 }
 
 if (import.meta.url === `file://${process.argv[1]}`) {
@@ -59,19 +59,19 @@ __webpack_async_result__();
 
 /***/ }),
 
-/***/ 337:
+/***/ 586:
 /***/ ((__unused_webpack___webpack_module__, __webpack_exports__, __nccwpck_require__) => {
 
 /* harmony export */ __nccwpck_require__.d(__webpack_exports__, {
-/* harmony export */   I: () => (/* binding */ VersionService)
+/* harmony export */   O: () => (/* binding */ MaintenancePlanService)
 /* harmony export */ });
-/* unused harmony export createVersionService */
+/* unused harmony export createMaintenancePlanService */
 /* harmony import */ var node_path__WEBPACK_IMPORTED_MODULE_0__ = __nccwpck_require__(760);
 /* harmony import */ var _systemcraft_stack_actions_utils__WEBPACK_IMPORTED_MODULE_1__ = __nccwpck_require__(36);
 
 
 
-class VersionService {
+class MaintenancePlanService {
   constructor(shellUtil, fsApi, gitUtil) {
     this.shell = shellUtil;
     this.fs = fsApi;
@@ -79,7 +79,7 @@ class VersionService {
   }
 
   static create(shell, fsApi) {
-    return new VersionService(shell, fsApi);
+    return new MaintenancePlanService(shell, fsApi);
   }
 
   getMajorBumpPackages(baseDir) {
@@ -127,9 +127,15 @@ class VersionService {
     console.debug(`✅ Plan written to: ${planFilePath}`);
   }
 
-  // runChangesetVersion() {
-  //   this.shell.exec('pnpm changeset version');
-  // }
+  stashPlanFile() {
+    const stashMessage = 'systemcraft-maintenance-file-stash';
+    const planFilePath = '.release-meta/maintenance-branches.json';
+
+    console.debug('📦 Stashing maintenance plan file...');
+    this.git.gitAdd(planFilePath);
+    this.git.gitStashPush(stashMessage, planFilePath);
+    console.debug(`✅ Plan file stashed with message: ${stashMessage}`);
+  }
 
   async run(env = process.env, baseDir = process.cwd()) {
     console.debug('🔄 Starting version script...');
@@ -141,6 +147,7 @@ class VersionService {
         'ℹ️ No major version bumps detected. Writing empty plan file.',
       );
       this.writePlanFile({}, baseDir);
+      this.stashPlanFile();
       return;
     }
 
@@ -150,6 +157,7 @@ class VersionService {
 
     const plan = this.generateMaintenancePlan(majorBumpPackages, baseDir);
     this.writePlanFile(plan, baseDir);
+    this.stashPlanFile();
 
     this.git.gitStatus();
     console.debug('✅ Version script completed successfully.');
@@ -157,8 +165,8 @@ class VersionService {
 }
 
 // Legacy function export for backward compatibility
-function createVersionService(shell, fsApi) {
-  return VersionService.create(shell, fsApi);
+function createMaintenancePlanService(shell, fsApi) {
+  return MaintenancePlanService.create(shell, fsApi);
 }
 
 
@@ -365,7 +373,23 @@ class GitUtil {
   gitStatus() {
     console.debug('Running git status...');
     this.shell.exec('git status');
-    console.debug('✅ Git status Run.');
+    console.debug('�u2705 Git status Run.');
+  }
+
+  gitStashPush(message, pathSpec) {
+    const cmd = pathSpec
+      ? `git stash push -m "${message}" -- ${pathSpec}`
+      : `git stash push -m "${message}"`;
+    this.shell.exec(cmd);
+  }
+
+  gitStashPop(stashName) {
+    this.shell.exec(`git stash pop ${stashName}`);
+  }
+
+  gitStashList() {
+    const result = this.shell.exec('git stash list', { stdio: 'pipe' });
+    return result.stdout.trim();
   }
 
   getChangedFilesBetweenRefs(baseRef, headRef, baseSha, headSha) {

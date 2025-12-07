@@ -1,12 +1,12 @@
 import { describe, it, mock, beforeEach, afterEach } from 'node:test';
 import assert from 'node:assert';
 
-import { VersionService } from './services/version.service.js';
+import { MaintenancePlanService } from './services/maintenance-plan.service.js';
 
-describe('VersionService', () => {
+describe('MaintenancePlanService', () => {
   let mockFsApi;
   let mockShellService;
-  let versionService;
+  let maintenancePlanService;
   let originalEnv;
 
   beforeEach(() => {
@@ -26,7 +26,10 @@ describe('VersionService', () => {
       exec: mock.fn(() => ({ stdout: '' })),
     };
 
-    versionService = VersionService.create(mockShellService, mockFsApi);
+    maintenancePlanService = MaintenancePlanService.create(
+      mockShellService,
+      mockFsApi,
+    );
   });
 
   afterEach(() => {
@@ -40,7 +43,7 @@ describe('VersionService', () => {
       mockFsApi.existsSync.mock.mockImplementation(() => false);
 
       // -- Act
-      await versionService.run(process.env);
+      await maintenancePlanService.run(process.env);
 
       // -- Assert
       assert.strictEqual(mockFsApi.writeFileSync.mock.callCount(), 1);
@@ -64,7 +67,7 @@ Fix a small bug
       );
 
       // -- Act
-      await versionService.run(process.env);
+      await maintenancePlanService.run(process.env);
 
       // -- Assert
       assert.strictEqual(mockFsApi.writeFileSync.mock.callCount(), 1);
@@ -93,7 +96,7 @@ Breaking change
       });
 
       // -- Act
-      await versionService.run(process.env);
+      await maintenancePlanService.run(process.env);
 
       // -- Assert
       assert.strictEqual(mockFsApi.writeFileSync.mock.callCount(), 1);
@@ -137,7 +140,7 @@ Breaking change
       });
 
       // -- Act
-      await versionService.run(process.env);
+      await maintenancePlanService.run(process.env);
 
       // -- Assert
       assert.strictEqual(mockFsApi.writeFileSync.mock.callCount(), 1);

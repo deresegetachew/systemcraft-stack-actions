@@ -6,7 +6,7 @@ import {
   PackageUtil,
   GitUtil,
 } from '@systemcraft-stack-actions/utils';
-export class VersionService {
+export class MaintenancePlanService {
   constructor(shellUtil, fsApi, gitUtil) {
     this.shell = shellUtil;
     this.fs = fsApi;
@@ -14,7 +14,7 @@ export class VersionService {
   }
 
   static create(shell, fsApi) {
-    return new VersionService(shell, fsApi);
+    return new MaintenancePlanService(shell, fsApi);
   }
 
   getMajorBumpPackages(baseDir) {
@@ -62,9 +62,15 @@ export class VersionService {
     console.debug(`✅ Plan written to: ${planFilePath}`);
   }
 
-  // runChangesetVersion() {
-  //   this.shell.exec('pnpm changeset version');
-  // }
+  stashPlanFile() {
+    const stashMessage = 'systemcraft-maintenance-file-stash';
+    const planFilePath = '.release-meta/maintenance-branches.json';
+
+    console.debug('📦 Stashing maintenance plan file...');
+    this.git.gitAdd(planFilePath);
+    this.git.gitStashPush(stashMessage, planFilePath);
+    console.debug(`✅ Plan file stashed with message: ${stashMessage}`);
+  }
 
   async run(env = process.env, baseDir = process.cwd()) {
     console.debug('🔄 Starting version script...');
@@ -76,6 +82,7 @@ export class VersionService {
         'ℹ️ No major version bumps detected. Writing empty plan file.',
       );
       this.writePlanFile({}, baseDir);
+      this.stashPlanFile();
       return;
     }
 
@@ -85,6 +92,7 @@ export class VersionService {
 
     const plan = this.generateMaintenancePlan(majorBumpPackages, baseDir);
     this.writePlanFile(plan, baseDir);
+    this.stashPlanFile();
 
     this.git.gitStatus();
     console.debug('✅ Version script completed successfully.');
@@ -92,6 +100,6 @@ export class VersionService {
 }
 
 // Legacy function export for backward compatibility
-export function createVersionService(shell, fsApi) {
-  return VersionService.create(shell, fsApi);
+export function createMaintenancePlanService(shell, fsApi) {
+  return MaintenancePlanService.create(shell, fsApi);
 }

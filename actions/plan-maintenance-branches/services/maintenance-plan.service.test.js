@@ -1,13 +1,13 @@
 import { describe, it, mock, beforeEach, afterEach } from 'node:test';
 import assert from 'node:assert';
 
-import { VersionService } from './version.service.js';
+import { MaintenancePlanService } from './maintenance-plan.service.js';
 
-describe('VersionService', () => {
+describe('MaintenancePlanService', () => {
   let mockFsApi;
   let mockShellService;
   let mockGitUtil;
-  let versionService;
+  let maintenancePlanService;
   let originalEnv;
 
   beforeEach(() => {
@@ -32,9 +32,10 @@ describe('VersionService', () => {
       gitAdd: mock.fn(),
       gitCommit: mock.fn(),
       gitStatus: mock.fn(),
+      gitStashPush: mock.fn(),
     };
 
-    versionService = new VersionService(
+    maintenancePlanService = new MaintenancePlanService(
       mockShellService,
       mockFsApi,
       mockGitUtil,
@@ -50,7 +51,7 @@ describe('VersionService', () => {
     it('should return empty set when no changesets exist', () => {
       mockFsApi.existsSync.mock.mockImplementation(() => false);
 
-      const result = versionService.getMajorBumpPackages('/test/dir');
+      const result = maintenancePlanService.getMajorBumpPackages('/test/dir');
 
       assert.ok(result instanceof Set);
       assert.strictEqual(result.size, 0);
@@ -67,7 +68,7 @@ Fix a small bug
             `,
       );
 
-      const result = versionService.getMajorBumpPackages('/test/dir');
+      const result = maintenancePlanService.getMajorBumpPackages('/test/dir');
 
       assert.ok(result instanceof Set);
       assert.strictEqual(result.size, 0);
@@ -85,7 +86,7 @@ Breaking changes in lib-one
             `,
       );
 
-      const result = versionService.getMajorBumpPackages('/test/dir');
+      const result = maintenancePlanService.getMajorBumpPackages('/test/dir');
 
       assert.ok(result.has('@scope/lib-one'));
       assert.ok(!result.has('@scope/lib-two'));
@@ -105,7 +106,7 @@ Breaking changes in lib-one
         }
       });
 
-      const result = versionService.generateMaintenancePlan(
+      const result = maintenancePlanService.generateMaintenancePlan(
         majorBumpPackages,
         '/test/dir',
       );
@@ -129,7 +130,7 @@ Breaking changes in lib-one
         return true; // Other directories exist
       });
 
-      const result = versionService.generateMaintenancePlan(
+      const result = maintenancePlanService.generateMaintenancePlan(
         majorBumpPackages,
         '/test/dir',
       );
@@ -148,7 +149,7 @@ Breaking changes in lib-one
       };
       mockFsApi.existsSync.mock.mockImplementation(() => true); // Directory exists
 
-      versionService.writePlanFile(plan, '/test/dir');
+      maintenancePlanService.writePlanFile(plan, '/test/dir');
 
       assert.strictEqual(mockFsApi.mkdirSync.mock.callCount(), 0); // Should not create directory
       assert.strictEqual(mockFsApi.writeFileSync.mock.callCount(), 1);
@@ -162,7 +163,7 @@ Breaking changes in lib-one
       mockFsApi.existsSync.mock.mockImplementation(() => false);
 
       const plan = {};
-      versionService.writePlanFile(plan, '/test/dir');
+      maintenancePlanService.writePlanFile(plan, '/test/dir');
 
       assert.strictEqual(mockFsApi.mkdirSync.mock.callCount(), 1);
       const mkdirCall = mockFsApi.mkdirSync.mock.calls[0];
@@ -174,7 +175,7 @@ Breaking changes in lib-one
     it('should skip if no changesets are found', async () => {
       mockFsApi.existsSync.mock.mockImplementation(() => false);
 
-      await versionService.run(process.env);
+      await maintenancePlanService.run(process.env);
 
       assert.strictEqual(mockFsApi.writeFileSync.mock.callCount(), 1);
       const writeCall = mockFsApi.writeFileSync.mock.calls[0];
@@ -193,7 +194,7 @@ Fix a small bug
             `,
       );
 
-      await versionService.run(process.env);
+      await maintenancePlanService.run(process.env);
 
       assert.strictEqual(mockFsApi.writeFileSync.mock.callCount(), 1);
       const writeCall = mockFsApi.writeFileSync.mock.calls[0];
@@ -219,7 +220,7 @@ Breaking change
         }
       });
 
-      await versionService.run(process.env);
+      await maintenancePlanService.run(process.env);
 
       assert.strictEqual(mockFsApi.writeFileSync.mock.callCount(), 1);
       const writeCall = mockFsApi.writeFileSync.mock.calls[0];
@@ -258,7 +259,7 @@ Breaking change
         }
       });
 
-      await versionService.run(process.env);
+      await maintenancePlanService.run(process.env);
 
       assert.strictEqual(mockFsApi.writeFileSync.mock.callCount(), 1);
       const writeCall = mockFsApi.writeFileSync.mock.calls[0];
@@ -269,11 +270,13 @@ Breaking change
     });
   });
 
-  describe('createVersionService (legacy)', () => {
+  describe('createMaintenancePlanService (legacy)', () => {
     it('should create service instance', () => {
       const service =
-        versionService.createVersionService?.(mockShellService, mockFsApi) ||
-        VersionService.create(mockShellService, mockFsApi);
+        maintenancePlanService.createMaintenancePlanService?.(
+          mockShellService,
+          mockFsApi,
+        ) || MaintenancePlanService.create(mockShellService, mockFsApi);
 
       assert.ok(service);
       assert.ok(service.run);
