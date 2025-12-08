@@ -31924,6 +31924,17 @@ class GitUtil {
     this.shell.exec(`git branch ${branchName} ${fromCommit}`);
   }
 
+  getCurrentBranch() {
+    const result = this.shell.exec('git branch --show-current', {
+      stdio: 'pipe',
+    });
+    return result.stdout.trim();
+  }
+
+  checkoutBranch(branchName) {
+    this.shell.exec(`git checkout ${branchName}`);
+  }
+
   pushBranch(branchName) {
     this.shell.exec(`git push origin ${branchName}`);
   }

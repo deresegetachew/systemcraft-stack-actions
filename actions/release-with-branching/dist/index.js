@@ -298,9 +298,23 @@ class ReleaseService {
     console.debug('🚀 Starting release script...');
 
     const ctx = this.getReleaseContext(env);
+
+    // Ensure we're on the correct branch (GITHUB_REF_NAME might differ from actual checked-out branch)
+    // This can happen if a previous step (like changesets/action) switched branches
+    const currentBranch = this.git.getCurrentBranch();
+    console.debug(`🔍 Expected branch (GITHUB_REF_NAME): ${ctx.branchName}`);
+    console.debug(`🔍 Actual checked-out branch: ${currentBranch}`);
+
+    if (currentBranch !== ctx.branchName) {
+      console.warn(
+        `⚠️  Branch mismatch! Switching from '${currentBranch}' to '${ctx.branchName}'`,
+      );
+      this.git.checkoutBranch(ctx.branchName);
+      console.debug(`✅ Switched to branch: ${ctx.branchName}`);
+    }
+
     const { proceedWithRelease } = await this.validatePreconditions(ctx);
 
-    console.debug(`🔍 Current branch: ${ctx.branchName}`);
     console.debug(`🔍 Multi-release mode: ${ctx.isMultiRelease}`);
     console.debug(`Proceed with release: ${proceedWithRelease}`);
 
@@ -499,6 +513,17 @@ class GitUtil {
 
   createBranch(branchName, fromCommit = 'HEAD~1') {
     this.shell.exec(`git branch ${branchName} ${fromCommit}`);
+  }
+
+  getCurrentBranch() {
+    const result = this.shell.exec('git branch --show-current', {
+      stdio: 'pipe',
+    });
+    return result.stdout.trim();
+  }
+
+  checkoutBranch(branchName) {
+    this.shell.exec(`git checkout ${branchName}`);
   }
 
   pushBranch(branchName) {

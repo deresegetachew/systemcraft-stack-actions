@@ -38,6 +38,8 @@ describe('ReleaseService', () => {
       getChangedFiles: mock.fn(() => Promise.resolve([])),
       checkRemoteBranch: mock.fn(() => false),
       createBranch: mock.fn(),
+      getCurrentBranch: mock.fn(() => 'main'),
+      checkoutBranch: mock.fn(),
       pushBranch: mock.fn(),
       pushTags: mock.fn(),
     };
@@ -399,14 +401,21 @@ describe('ReleaseService', () => {
         GITHUB_REF_NAME: 'feature/test',
         ENABLE_MULTI_RELEASE: 'true',
       };
+      mockGitService.getCurrentBranch.mock.mockImplementation(
+        () => 'feature/test',
+      );
 
       await releaseService.run(env);
 
       assert.strictEqual(mockShellService.run.mock.callCount(), 0);
     });
 
-    it('should execute release steps when preconditions are met', async () => {
+    it('should switch to correct branch if mismatch detected', async () => {
       const env = { GITHUB_REF_NAME: 'main', ENABLE_MULTI_RELEASE: 'false' };
+      mockGitService.getCurrentBranch.mock.mockImplementation(
+        () => 'changeset-release/main',
+      );
+      mockFsApi.existsSync.mock.mockImplementation(() => false); // No changesets
       mockGitService.getChangedFiles.mock.mockImplementation(() =>
         Promise.resolve(['packages/lib-one/package.json']),
       );
@@ -419,7 +428,30 @@ describe('ReleaseService', () => {
 
       await releaseService.run(env);
 
-      // Should call git show (fails) and changeset publish
+      // Should have switched to main branch
+      assert.strictEqual(mockGitService.checkoutBranch.mock.callCount(), 1);
+      assert.strictEqual(
+        mockGitService.checkoutBranch.mock.calls[0].arguments[0],
+        'main',
+      );
+    });
+
+    it('should execute release steps when preconditions are met', async () => {
+      const env = { GITHUB_REF_NAME: 'main', ENABLE_MULTI_RELEASE: 'false' };
+      mockFsApi.existsSync.mock.mockImplementation(() => false); // No changesets
+      mockGitService.getChangedFiles.mock.mockImplementation(() =>
+        Promise.resolve(['packages/lib-one/package.json']),
+      );
+      mockShellService.exec.mock.mockImplementation((cmd) => {
+        if (cmd.includes('git show HEAD:.release-meta')) {
+          throw new Error('File not found');
+        }
+        return { stdout: '' };
+      });
+
+      await releaseService.run(env);
+
+      // Should call: git show (planRelease) and changeset publish
       assert.strictEqual(mockShellService.exec.mock.callCount(), 2);
       const publishCall = mockShellService.exec.mock.calls.find((call) =>
         call.arguments[0].includes('changeset publish'),
