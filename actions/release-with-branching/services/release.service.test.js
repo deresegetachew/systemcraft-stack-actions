@@ -272,10 +272,23 @@ describe('ReleaseService', () => {
         'config.json',
         'soft-pants-count.md',
       ]);
+      mockFsApi.readFileSync.mock.mockImplementation(
+        () => '"@systemcraft/lib-one": major\n\nTest changeset',
+      );
 
       const result = releaseService.checkForChangesets();
 
       assert.strictEqual(result, true);
+    });
+
+    it('should return false on error', () => {
+      mockFsApi.existsSync.mock.mockImplementation(() => {
+        throw new Error('File system error');
+      });
+
+      const result = releaseService.checkForChangesets();
+
+      assert.strictEqual(result, false);
     });
   });
 

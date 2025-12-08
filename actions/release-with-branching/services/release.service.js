@@ -1,6 +1,6 @@
 import path from 'node:path';
 
-import { GitUtil } from '@systemcraft-stack-actions/utils';
+import { GitUtil, loadChangesetFiles } from '@systemcraft-stack-actions/utils';
 
 export class ReleaseService {
   constructor(gitService, shellService, fsApi, pathApi) {
@@ -100,21 +100,11 @@ export class ReleaseService {
   }
 
   checkForChangesets() {
-    const changesetDir = '.changeset';
-
-    if (!this.fs.existsSync(changesetDir)) {
-      return false;
-    }
-
     try {
-      const files = this.fs.readdirSync(changesetDir);
-      // Filter out README.md and config.json - only .md files that aren't README are changesets
-      const changesetFiles = files.filter(
-        (file) => file.endsWith('.md') && file !== 'README.md',
-      );
+      const changesetFiles = loadChangesetFiles(this.fs, process.cwd());
       return changesetFiles.length > 0;
     } catch (error) {
-      console.debug(`Error reading changeset directory: ${error.message}`);
+      console.debug(`Error loading changeset files: ${error.message}`);
       return false;
     }
   }

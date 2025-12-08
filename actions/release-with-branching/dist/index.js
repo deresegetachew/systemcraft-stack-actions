@@ -205,21 +205,11 @@ class ReleaseService {
   }
 
   checkForChangesets() {
-    const changesetDir = '.changeset';
-
-    if (!this.fs.existsSync(changesetDir)) {
-      return false;
-    }
-
     try {
-      const files = this.fs.readdirSync(changesetDir);
-      // Filter out README.md and config.json - only .md files that aren't README are changesets
-      const changesetFiles = files.filter(
-        (file) => file.endsWith('.md') && file !== 'README.md',
-      );
+      const changesetFiles = (0,_systemcraft_stack_actions_utils__WEBPACK_IMPORTED_MODULE_1__/* .loadChangesetFiles */ .kK)(this.fs, process.cwd());
       return changesetFiles.length > 0;
     } catch (error) {
-      console.debug(`Error reading changeset directory: ${error.message}`);
+      console.debug(`Error loading changeset files: ${error.message}`);
       return false;
     }
   }
@@ -340,10 +330,11 @@ __nccwpck_require__.d(__webpack_exports__, {
   Hc: () => (/* reexport */ GitUtil),
   Rs: () => (/* reexport */ ShellUtil),
   lL: () => (/* reexport */ getActionInput),
-  Hj: () => (/* reexport */ getBooleanActionInput)
+  Hj: () => (/* reexport */ getBooleanActionInput),
+  kK: () => (/* reexport */ loadChangesetFiles)
 });
 
-// UNUSED EXPORTS: FSUtil, PackageUtil, extractMajorBumpPackagesFromChangesets, getPackageInfo, loadChangesetFiles, sanitizePackageDir
+// UNUSED EXPORTS: FSUtil, PackageUtil, extractMajorBumpPackagesFromChangesets, getPackageInfo, sanitizePackageDir
 
 // EXTERNAL MODULE: external "node:fs"
 var external_node_fs_ = __nccwpck_require__(24);
@@ -954,8 +945,8 @@ class PackageUtil {
    */
   getPackageInfo(packageName, baseDir) {
     const packageDirName = packageName.split('/').pop();
-    const packagePath = path.resolve(baseDir, 'packages', packageDirName);
-    const packageJsonPath = path.join(packagePath, 'package.json');
+    const packagePath = external_node_path_.resolve(baseDir, 'packages', packageDirName);
+    const packageJsonPath = external_node_path_.join(packagePath, 'package.json');
 
     if (!this.fs.existsSync(packageJsonPath)) {
       return null;
@@ -984,7 +975,7 @@ class PackageUtil {
    * // Returns: [{ filename: 'feature.md', content: '---\n"@myorg/utils": minor\n---\n\nAdd new utility' }]
    */
   loadChangesetFiles(baseDir) {
-    const changesetsDir = path.resolve(baseDir, '.changeset');
+    const changesetsDir = external_node_path_.resolve(baseDir, '.changeset');
 
     if (!this.fs.existsSync(changesetsDir)) {
       return [];
@@ -996,7 +987,7 @@ class PackageUtil {
       .map((filename) => ({
         filename,
         content: this.fs.readFileSync(
-          path.join(changesetsDir, filename),
+          external_node_path_.join(changesetsDir, filename),
           'utf-8',
         ),
       }));
