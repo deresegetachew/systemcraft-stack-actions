@@ -32601,7 +32601,6 @@ class ShellUtil {
 
       if (output === null || output === undefined) return { stdout: '' };
 
-      console.debug('---->', { stdout: output.toString() });
       return { stdout: output.toString() };
     } catch (e) {
       console.error(`❌ Command failed: ${command}`);

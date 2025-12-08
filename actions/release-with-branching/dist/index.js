@@ -155,9 +155,6 @@ class ReleaseService {
     steps.push({ type: 'exec', cmd: 'pnpm changeset publish' });
     steps.push({ type: 'push-tags' });
 
-    console.debug(
-      `planned release steps: ${steps.map((s) => s.type).join(', ')}`,
-    );
     return steps;
   }
 
@@ -236,8 +233,7 @@ class ReleaseService {
       isChangesetReleaseBranch,
     } = ctx;
 
-
-    console.debug('ctx', { ctx })
+    console.debug('ctx', { ctx });
 
     // Skip if on changeset-release branch (Version PR branch)
     if (isChangesetReleaseBranch) {
@@ -293,6 +289,7 @@ class ReleaseService {
     console.debug('📝 Planned steps:', steps.map((s) => s.type).join(', '));
 
     this.executeSteps(steps);
+
     console.debug('✅ Release process completed successfully.');
   }
 }
@@ -1156,7 +1153,6 @@ class ShellUtil {
 
       if (output === null || output === undefined) return { stdout: '' };
 
-      console.debug('---->', { stdout: output.toString() });
       return { stdout: output.toString() };
     } catch (e) {
       console.error(`❌ Command failed: ${command}`);
