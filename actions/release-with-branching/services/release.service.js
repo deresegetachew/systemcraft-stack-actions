@@ -189,25 +189,31 @@ export class ReleaseService {
     return { proceedWithRelease: false };
   }
 
+  ensureCorrectBranch(triggerBranch) {
+    const { currentBranch, mismatch } =
+      this.git.logBranchContext(triggerBranch);
+
+    if (mismatch) {
+      console.warn(
+        `⚠️  Branch mismatch! Switching from '${currentBranch}' to '${triggerBranch}'`,
+      );
+      this.git.checkoutBranch(triggerBranch);
+      console.debug(`✅ Switched to branch: ${triggerBranch}`);
+      return true; // Switched
+    }
+    return false; // No switch needed
+  }
+
   async run(env = process.env) {
     console.debug('🚀 Starting release script...');
 
-    const ctx = this.getReleaseContext(env);
-
-    // Ensure we're on the correct branch (GITHUB_REF_NAME might differ from actual checked-out branch)
+    // Ensure we're on the correct branch before reading context
     // This can happen if a previous step (like changesets/action) switched branches
-    const currentBranch = this.git.getCurrentBranch();
-    console.debug(`🔍 Expected branch (GITHUB_REF_NAME): ${ctx.branchName}`);
-    console.debug(`🔍 Actual checked-out branch: ${currentBranch}`);
+    const triggerBranch = env.GITHUB_REF_NAME;
+    this.ensureCorrectBranch(triggerBranch);
 
-    if (currentBranch !== ctx.branchName) {
-      console.warn(
-        `⚠️  Branch mismatch! Switching from '${currentBranch}' to '${ctx.branchName}'`,
-      );
-      this.git.checkoutBranch(ctx.branchName);
-      console.debug(`✅ Switched to branch: ${ctx.branchName}`);
-    }
-
+    // Get release context after ensuring correct branch
+    const ctx = this.getReleaseContext(env);
     const { proceedWithRelease } = await this.validatePreconditions(ctx);
 
     console.debug(`🔍 Multi-release mode: ${ctx.isMultiRelease}`);

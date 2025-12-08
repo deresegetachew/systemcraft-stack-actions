@@ -27662,6 +27662,13 @@ class GitUtil {
     return result.stdout.trim();
   }
 
+  logBranchContext(triggerBranch) {
+    const currentBranch = this.getCurrentBranch();
+    console.debug(`🔍 Action triggered on branch: ${triggerBranch}`);
+    console.debug(`🔍 Currently checked-out branch: ${currentBranch}`);
+    return { currentBranch, triggerBranch, mismatch: currentBranch !== triggerBranch };
+  }
+
   checkoutBranch(branchName) {
     this.shell.exec(`git checkout ${branchName}`);
   }

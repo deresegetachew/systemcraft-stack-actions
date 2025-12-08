@@ -39,6 +39,11 @@ describe('ReleaseService', () => {
       checkRemoteBranch: mock.fn(() => false),
       createBranch: mock.fn(),
       getCurrentBranch: mock.fn(() => 'main'),
+      logBranchContext: mock.fn((triggerBranch) => ({
+        currentBranch: mockGitService.getCurrentBranch(),
+        triggerBranch,
+        mismatch: mockGitService.getCurrentBranch() !== triggerBranch,
+      })),
       checkoutBranch: mock.fn(),
       pushBranch: mock.fn(),
       pushTags: mock.fn(),
@@ -412,6 +417,7 @@ describe('ReleaseService', () => {
 
     it('should switch to correct branch if mismatch detected', async () => {
       const env = { GITHUB_REF_NAME: 'main', ENABLE_MULTI_RELEASE: 'false' };
+
       mockGitService.getCurrentBranch.mock.mockImplementation(
         () => 'changeset-release/main',
       );
@@ -428,7 +434,12 @@ describe('ReleaseService', () => {
 
       await releaseService.run(env);
 
-      // Should have switched to main branch
+      // Should have logged branch context and switched to main branch
+      assert.strictEqual(mockGitService.logBranchContext.mock.callCount(), 1);
+      assert.strictEqual(
+        mockGitService.logBranchContext.mock.calls[0].arguments[0],
+        'main',
+      );
       assert.strictEqual(mockGitService.checkoutBranch.mock.callCount(), 1);
       assert.strictEqual(
         mockGitService.checkoutBranch.mock.calls[0].arguments[0],
