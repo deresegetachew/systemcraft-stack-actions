@@ -218,6 +218,7 @@ describe('ReleaseService', () => {
         ENABLE_MULTI_RELEASE: 'true',
         GITHUB_REF_NAME: 'main',
       };
+      mockFsApi.existsSync.mock.mockImplementation(() => false);
 
       const ctx = releaseService.getReleaseContext(env);
 
@@ -225,6 +226,7 @@ describe('ReleaseService', () => {
       assert.strictEqual(ctx.branchName, 'main');
       assert.strictEqual(ctx.isMainBranch, true);
       assert.strictEqual(ctx.isReleaseBranch, false);
+      assert.strictEqual(ctx.hasChangesets, false);
     });
 
     it('should detect release branch', () => {
@@ -232,11 +234,48 @@ describe('ReleaseService', () => {
         ENABLE_MULTI_RELEASE: 'false',
         GITHUB_REF_NAME: 'release/lib-one@2.0.0',
       };
+      mockFsApi.existsSync.mock.mockImplementation(() => false);
 
       const ctx = releaseService.getReleaseContext(env);
 
       assert.strictEqual(ctx.isReleaseBranch, true);
       assert.strictEqual(ctx.isMainBranch, false);
+      assert.strictEqual(ctx.hasChangesets, false);
+    });
+  });
+
+  describe('checkForChangesets', () => {
+    it('should return false when .changeset directory does not exist', () => {
+      mockFsApi.existsSync.mock.mockImplementation(() => false);
+
+      const result = releaseService.checkForChangesets();
+
+      assert.strictEqual(result, false);
+    });
+
+    it('should return false when only README.md exists', () => {
+      mockFsApi.existsSync.mock.mockImplementation(() => true);
+      mockFsApi.readdirSync.mock.mockImplementation(() => [
+        'README.md',
+        'config.json',
+      ]);
+
+      const result = releaseService.checkForChangesets();
+
+      assert.strictEqual(result, false);
+    });
+
+    it('should return true when changeset files exist', () => {
+      mockFsApi.existsSync.mock.mockImplementation(() => true);
+      mockFsApi.readdirSync.mock.mockImplementation(() => [
+        'README.md',
+        'config.json',
+        'soft-pants-count.md',
+      ]);
+
+      const result = releaseService.checkForChangesets();
+
+      assert.strictEqual(result, true);
     });
   });
 
@@ -248,6 +287,7 @@ describe('ReleaseService', () => {
         isMainBranch: true,
         isReleaseBranch: false,
         isChangesetReleaseBranch: false,
+        hasChangesets: false,
       };
       mockGitService.getChangedFiles.mock.mockImplementation(() =>
         Promise.resolve(['packages/lib-one/package.json']),
@@ -265,6 +305,7 @@ describe('ReleaseService', () => {
         isMainBranch: false,
         isReleaseBranch: true,
         isChangesetReleaseBranch: false,
+        hasChangesets: false,
       };
       mockGitService.getChangedFiles.mock.mockImplementation(() =>
         Promise.resolve(['packages/lib-one/CHANGELOG.md']),
@@ -282,6 +323,7 @@ describe('ReleaseService', () => {
         isMainBranch: false,
         isReleaseBranch: false,
         isChangesetReleaseBranch: true,
+        hasChangesets: false,
       };
 
       const result = await releaseService.validatePreconditions(ctx);
@@ -296,6 +338,22 @@ describe('ReleaseService', () => {
         isMainBranch: false,
         isReleaseBranch: false,
         isChangesetReleaseBranch: false,
+        hasChangesets: false,
+      };
+
+      const result = await releaseService.validatePreconditions(ctx);
+
+      assert.strictEqual(result.proceedWithRelease, false);
+    });
+
+    it('should skip release when changesets exist (Version PR not merged)', async () => {
+      const ctx = {
+        branchName: 'main',
+        isMultiRelease: true,
+        isMainBranch: true,
+        isReleaseBranch: false,
+        isChangesetReleaseBranch: false,
+        hasChangesets: true,
       };
 
       const result = await releaseService.validatePreconditions(ctx);
@@ -310,6 +368,7 @@ describe('ReleaseService', () => {
         isMainBranch: true,
         isReleaseBranch: false,
         isChangesetReleaseBranch: false,
+        hasChangesets: false,
       };
       mockGitService.getChangedFiles.mock.mockImplementation(() =>
         Promise.resolve(['src/feature.js', 'docs/README.md']),

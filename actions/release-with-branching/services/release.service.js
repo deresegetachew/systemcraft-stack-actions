@@ -99,6 +99,26 @@ export class ReleaseService {
     }
   }
 
+  checkForChangesets() {
+    const changesetDir = '.changeset';
+
+    if (!this.fs.existsSync(changesetDir)) {
+      return false;
+    }
+
+    try {
+      const files = this.fs.readdirSync(changesetDir);
+      // Filter out README.md and config.json - only .md files that aren't README are changesets
+      const changesetFiles = files.filter(
+        (file) => file.endsWith('.md') && file !== 'README.md',
+      );
+      return changesetFiles.length > 0;
+    } catch (error) {
+      console.debug(`Error reading changeset directory: ${error.message}`);
+      return false;
+    }
+  }
+
   getReleaseContext(env) {
     const isMultiRelease = env.ENABLE_MULTI_RELEASE === 'true';
     const branchName = env.GITHUB_REF_NAME;
@@ -110,12 +130,17 @@ export class ReleaseService {
       branchName && branchName.startsWith('changeset-release/'),
     );
 
+    // Check if there are changesets to process
+    // If changesets exist, Version PR hasn't been merged yet
+    const hasChangesets = this.checkForChangesets();
+
     return {
       isMultiRelease,
       branchName,
       isReleaseBranch,
       isMainBranch,
       isChangesetReleaseBranch,
+      hasChangesets,
     };
   }
 
@@ -126,6 +151,7 @@ export class ReleaseService {
       isReleaseBranch,
       isMainBranch,
       isChangesetReleaseBranch,
+      hasChangesets,
     } = ctx;
 
     console.debug('ctx', { ctx });
@@ -134,6 +160,14 @@ export class ReleaseService {
     if (isChangesetReleaseBranch) {
       console.warn(
         `⏭️  Skipping release: on Version PR branch ${branchName}. Release will happen after PR is merged.`,
+      );
+      return { proceedWithRelease: false };
+    }
+
+    // Skip if there are changesets to process (Version PR not merged yet)
+    if (hasChangesets) {
+      console.warn(
+        `⏭️  Skipping release: changesets detected in .changeset directory. Release will happen after Version PR is merged.`,
       );
       return { proceedWithRelease: false };
     }
