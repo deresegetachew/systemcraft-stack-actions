@@ -194,7 +194,7 @@ class ReleaseService {
 
     if (!branchExists) {
       // Create maintenance branch from HEAD~1 (the commit before the version PR merge)
-      // 
+      //
       // Context: This action runs AFTER the version PR has been merged to main.
       // The version PR contains bumped package versions (e.g., 3.5.0 → 4.0.0).
       // We want the maintenance branch to be frozen at the state BEFORE the version bump,
@@ -212,9 +212,7 @@ class ReleaseService {
       console.debug(`Creating '${branchName}' from HEAD~1...`);
       this.git.createBranch(branchName, 'HEAD~1');
       this.git.pushBranch(branchName);
-      console.debug(
-        `✅ Created and pushed '${branchName}' from HEAD~1.`,
-      );
+      console.debug(`✅ Created and pushed '${branchName}' from HEAD~1.`);
     } else {
       console.debug(`✅ Branch '${branchName}' already exists.`);
     }
@@ -527,7 +525,7 @@ class GitUtil {
 
   checkRemoteBranch(branchName) {
     const result = this.shell.exec(
-      `git ls-remote --heads origin "${branchName}"`,
+      `git ls-remote --heads origin "refs/heads/${branchName}"`,
       { stdio: 'pipe' },
     );
     return result.stdout.trim() !== '';

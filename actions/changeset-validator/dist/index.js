@@ -31914,7 +31914,7 @@ class GitUtil {
 
   checkRemoteBranch(branchName) {
     const result = this.shell.exec(
-      `git ls-remote --heads origin "${branchName}"`,
+      `git ls-remote --heads origin "refs/heads/${branchName}"`,
       { stdio: 'pipe' },
     );
     return result.stdout.trim() !== '';
