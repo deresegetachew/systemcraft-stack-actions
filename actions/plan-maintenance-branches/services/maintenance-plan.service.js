@@ -39,6 +39,7 @@ export class MaintenancePlanService {
       }
 
       const branchName = `release/${pkgInfo.dirName}@${pkgInfo.version}`;
+
       plan[packageName] = {
         branchName,
         version: pkgInfo.version,

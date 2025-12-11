@@ -88,12 +88,26 @@ export class ReleaseService {
     const branchExists = this.git.checkRemoteBranch(branchName);
 
     if (!branchExists) {
-      console.debug(`Creating '${branchName}'...`);
+      // Create maintenance branch from HEAD~1 (the commit before the version PR merge)
+      //
+      // Context: This action runs AFTER the version PR has been merged to main.
+      // The version PR contains bumped package versions (e.g., 3.5.0 → 4.0.0).
+      // We want the maintenance branch to be frozen at the state BEFORE the version bump,
+      // so it can receive backported patches for the old major version.
+      //
+      // HEAD~1 points to the last commit on main before the version PR merged,
+      // which is exactly the snapshot we need - it includes all changes up to but not
+      // including the version bump. This ensures the maintenance branch (e.g., v3-lib-one)
+      // stays on the old major version while main continues with the new version.
+      //
+      // Example timeline:
+      //   1. main at commit A (lib-one@3.5.0)
+      //   2. Version PR merges → main at commit B (lib-one@4.0.0) ← HEAD is here
+      //   3. We create v3-lib-one from HEAD~1 (commit A) ← frozen at 3.5.0
+      console.debug(`Creating '${branchName}' from HEAD~1...`);
       this.git.createBranch(branchName, 'HEAD~1');
       this.git.pushBranch(branchName);
-      console.debug(
-        `✅ Created and pushed '${branchName}' from previous commit.`,
-      );
+      console.debug(`✅ Created and pushed '${branchName}' from HEAD~1.`);
     } else {
       console.debug(`✅ Branch '${branchName}' already exists.`);
     }

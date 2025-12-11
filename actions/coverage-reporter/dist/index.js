@@ -27645,7 +27645,7 @@ class GitUtil {
 
   checkRemoteBranch(branchName) {
     const result = this.shell.exec(
-      `git ls-remote --heads origin ${branchName}`,
+      `git ls-remote --heads origin "${branchName}"`,
       { stdio: 'pipe' },
     );
     return result.stdout.trim() !== '';
@@ -27666,7 +27666,11 @@ class GitUtil {
     const currentBranch = this.getCurrentBranch();
     console.debug(`🔍 Action triggered on branch: ${triggerBranch}`);
     console.debug(`🔍 Currently checked-out branch: ${currentBranch}`);
-    return { currentBranch, triggerBranch, mismatch: currentBranch !== triggerBranch };
+    return {
+      currentBranch,
+      triggerBranch,
+      mismatch: currentBranch !== triggerBranch,
+    };
   }
 
   checkoutBranch(branchName) {
@@ -28341,7 +28345,7 @@ class ShellUtil {
    * }
    */
   exec(command, options = {}) {
-    console.debug(`> ${command}`);
+    console.debug(`SHELL EXEC > ${command}`);
     try {
       const output = this.cp.execSync(command, {
         stdio: 'inherit',

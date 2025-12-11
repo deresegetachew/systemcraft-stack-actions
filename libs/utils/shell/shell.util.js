@@ -62,7 +62,7 @@ export class ShellUtil {
    * }
    */
   exec(command, options = {}) {
-    console.debug(`> ${command}`);
+    console.debug(`SHELL EXEC > ${command}`);
     try {
       const output = this.cp.execSync(command, {
         stdio: 'inherit',
