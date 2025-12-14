@@ -43,6 +43,10 @@ describe('ReleaseService', () => {
       createBranch: mock.fn(),
       pushBranch: mock.fn(),
       pushTags: mock.fn(),
+      logBranchContext: mock.fn(() => ({
+        currentBranch: 'dummy',
+        mismatch: false,
+      })),
     };
 
     // Create release service with mocked dependencies

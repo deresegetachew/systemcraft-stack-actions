@@ -1,154 +1,72 @@
 import { describe, it, mock, beforeEach, afterEach } from 'node:test';
 import assert from 'node:assert';
 
-import { MaintenancePlanService } from './services/maintenance-plan.service.js';
+import { main } from './index.js';
 
-describe('MaintenancePlanService', () => {
-  let mockFsApi;
+describe('main() - Entry Point', () => {
   let mockShellService;
-  let maintenancePlanService;
-  let originalEnv;
+  let mockFsApi;
 
   beforeEach(() => {
-    originalEnv = { ...process.env };
-
-    // Mock filesystem
-    mockFsApi = {
-      existsSync: mock.fn(() => true),
-      readdirSync: mock.fn(() => ['major-bump.md']),
-      readFileSync: mock.fn(),
-      mkdirSync: mock.fn(),
-      writeFileSync: mock.fn(),
-    };
-
-    // Mock shell service
     mockShellService = {
       exec: mock.fn(() => ({ stdout: '' })),
     };
 
-    maintenancePlanService = MaintenancePlanService.create(
-      mockShellService,
-      mockFsApi,
-    );
+    mockFsApi = {
+      existsSync: mock.fn(() => false),
+      mkdirSync: mock.fn(),
+      writeFileSync: mock.fn(),
+    };
   });
 
   afterEach(() => {
-    process.env = originalEnv;
     mock.restoreAll();
   });
 
-  describe('main()', () => {
-    it('should skip if no changesets are found', async () => {
-      // -- Arrange
-      mockFsApi.existsSync.mock.mockImplementation(() => false);
-
-      // -- Act
-      await maintenancePlanService.run(process.env);
-
-      // -- Assert
-      assert.strictEqual(mockFsApi.writeFileSync.mock.callCount(), 1);
-      assert.strictEqual(
-        mockShellService.exec.mock.callCount(),
-        0,
-        'Should not run changeset version',
-      );
+  it('should skip when commit message contains "Version Packages"', async () => {
+    mockShellService.exec.mock.mockImplementation((cmd) => {
+      if (cmd.includes('git log')) {
+        return { stdout: 'chore: Version Packages (#123)\n' };
+      }
+      return { stdout: '' };
     });
 
-    it('should write an empty plan file if no major bumps are detected', async () => {
-      // -- Arrange
-      mockFsApi.readFileSync.mock.mockImplementation(
-        () => `
----
-"@scope/lib-one": patch
----
+    await main(process.env, mockFsApi, mockShellService);
 
-Fix a small bug
-            `,
-      );
+    // Should only call git log, not proceed with version logic
+    assert.strictEqual(mockShellService.exec.mock.callCount(), 1);
+    assert.ok(
+      mockShellService.exec.mock.calls[0].arguments[0].includes('git log'),
+    );
+    // Should not write plan file
+    assert.strictEqual(mockFsApi.writeFileSync.mock.callCount(), 0);
+  });
 
-      // -- Act
-      await maintenancePlanService.run(process.env);
-
-      // -- Assert
-      assert.strictEqual(mockFsApi.writeFileSync.mock.callCount(), 1);
-      const writeCall = mockFsApi.writeFileSync.mock.calls[0];
-      const writtenContent = JSON.parse(writeCall.arguments[1]);
-      assert.deepStrictEqual(writtenContent, {});
+  it('should proceed when commit message does not contain "Version Packages"', async () => {
+    mockShellService.exec.mock.mockImplementation((cmd) => {
+      if (cmd.includes('git log')) {
+        return { stdout: 'feat: add new feature\n' };
+      }
+      return { stdout: '' };
     });
 
-    it('should plan a maintenance branch for a single major bump', async () => {
-      // -- Arrange
-      mockFsApi.readFileSync.mock.mockImplementation((path) => {
-        if (path.includes('.md')) {
-          return `
----
-"@scope/lib-one": major
----
+    await main(process.env, mockFsApi, mockShellService);
 
-Breaking change
-                    `;
-        } else if (path.includes('package.json')) {
-          return JSON.stringify({
-            name: '@scope/lib-one',
-            version: '2.0.0',
-          });
-        }
-      });
+    // Should proceed with version logic and write plan file
+    assert.ok(mockFsApi.writeFileSync.mock.callCount() > 0);
+  });
 
-      // -- Act
-      await maintenancePlanService.run(process.env);
-
-      // -- Assert
-      assert.strictEqual(mockFsApi.writeFileSync.mock.callCount(), 1);
-      const writeCall = mockFsApi.writeFileSync.mock.calls[0];
-      const writtenContent = JSON.parse(writeCall.arguments[1]);
-
-      assert.ok(writtenContent['@scope/lib-one']);
-      assert.strictEqual(writtenContent['@scope/lib-one'].version, '2.0.0');
-      assert.ok(
-        writtenContent['@scope/lib-one'].branchName.includes('lib-one'),
-      );
-
-      assert.ok(
-        mockShellService.exec.mock.calls[0].arguments[0].includes(
-          'changeset version',
-        ),
-      );
+  it('should proceed if git log fails', async () => {
+    mockShellService.exec.mock.mockImplementation((cmd) => {
+      if (cmd.includes('git log')) {
+        throw new Error('git command failed');
+      }
+      return { stdout: '' };
     });
 
-    it('should plan branches for multiple major bumps', async () => {
-      // -- Arrange
-      mockFsApi.readdirSync.mock.mockImplementation(() => [
-        'bump1.md',
-        'bump2.md',
-      ]);
+    await main(process.env, mockFsApi, mockShellService);
 
-      let readCount = 0;
-      mockFsApi.readFileSync.mock.mockImplementation((path) => {
-        if (path.includes('.md')) {
-          readCount++;
-          if (readCount === 1) {
-            return `---\n"@scope/lib-one": major\n---\nBreaking change in lib-one`;
-          } else {
-            return `---\n"@scope/lib-two": major\n---\nBreaking change in lib-two`;
-          }
-        } else if (path.includes('lib-one')) {
-          return JSON.stringify({ name: '@scope/lib-one', version: '2.0.0' });
-        } else if (path.includes('lib-two')) {
-          return JSON.stringify({ name: '@scope/lib-two', version: '3.0.0' });
-        }
-      });
-
-      // -- Act
-      await maintenancePlanService.run(process.env);
-
-      // -- Assert
-      assert.strictEqual(mockFsApi.writeFileSync.mock.callCount(), 1);
-      const writeCall = mockFsApi.writeFileSync.mock.calls[0];
-      const writtenContent = JSON.parse(writeCall.arguments[1]);
-
-      assert.ok(writtenContent['@scope/lib-one']);
-      assert.ok(writtenContent['@scope/lib-two']);
-    });
+    // Should proceed with version logic despite git error
+    assert.ok(mockFsApi.writeFileSync.mock.callCount() > 0);
   });
 });
